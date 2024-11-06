@@ -5,6 +5,10 @@ use bevy::{prelude::*, window::{PrimaryWindow, WindowMode}};
 use crate::utils::debug::DebugDisplay;
 
 pub struct InputMap {
+    pub forward: KeyCode,
+    pub backward: KeyCode,
+    pub left: KeyCode,
+    pub right: KeyCode,
     pub turn_r: KeyCode,
     pub turn_l: KeyCode,
     pub close: KeyCode,
@@ -15,6 +19,10 @@ pub struct InputMap {
 impl Default for InputMap {
     fn default() -> Self {
         return Self {
+            forward: KeyCode::KeyW,
+            backward: KeyCode::KeyS,
+            left: KeyCode::KeyA,
+            right: KeyCode::KeyD,
             turn_r: KeyCode::KeyQ,
             turn_l: KeyCode::KeyE,
             close: KeyCode::Escape,
