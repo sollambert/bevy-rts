@@ -1,8 +1,8 @@
 use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, RigidBody}, PhysicsPlugins};
 use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
-use controls::{controls::{handle_debug_keys, handle_key_window_functions}, player::{handle_camera_move, handle_camera_transform, handle_camera_zoom}};
+use controls::{controls::{handle_debug_keys, handle_key_window_functions}, player::{handle_camera_move, handle_camera_transform, handle_camera_zoom, handle_selection_event}};
 use entities::{player::{PlayerBundle, PlayerCamera}, EntityCollisionLayers};
-use ui::cursor::{handle_cursor, handle_cursor_change_event, handle_selection_event, setup_cursor, CursorChangeEvent, CursorSelectionEvent};
+use ui::cursor::{handle_cursor, handle_cursor_mode_event, setup_cursor, CursorModeChangeEvent, CursorSelectionEvent};
 use utils::debug::{setup_debug_screen, update_debug_screen};
 
 mod controls;
@@ -16,12 +16,12 @@ fn main() {
     let mut app = App::new();
     app.add_plugins(plugins);
     app.init_resource::<Game>()
-    .add_event::<CursorChangeEvent>()
+    .add_event::<CursorModeChangeEvent>()
         .add_event::<CursorSelectionEvent>()
         .add_systems(Startup, setup)
         .add_systems(Startup, setup_cursor)
         .add_systems(Update, handle_cursor)
-        .add_systems(Update, handle_cursor_change_event)
+        .add_systems(Update, handle_cursor_mode_event)
         .add_systems(Update, handle_selection_event)
         .add_systems(Update, handle_key_window_functions)
         .add_systems(Update, handle_camera_move)

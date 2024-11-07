@@ -1,41 +1,36 @@
-use std::f32::consts::E;
-
 use bevy::{input::mouse::MouseMotion, prelude::*, window::*};
-
-use crate::entities::player::PlayerCamera;
 
 pub const CURSOR_POSITION_DEFAULT: Vec2 = Vec2::new(0.5, 0.5);
 pub const MOUSE_SENSITIVITY: f32 = 0.2;
-pub const SCROLL_SPEED: f32 = 50.0;
 
 #[derive(Clone, Copy)]
 pub struct CursorTextureIndex;
 
 impl CursorTextureIndex {
-    pub const POINTER: usize = 0;
-    pub const POINTER_QUESTION: usize = 1;
-    pub const POINTER_EXCLAMATION: usize = 2;
-    pub const POINTER_CIRCLE: usize = 3;
-    pub const POINTER_X: usize = 4;
-    pub const POINTER_CLOCK: usize = 5;
-    pub const POINTER_BLOCK: usize = 6;
-    pub const POINTER_FACE: usize = 7;
-    pub const RESIZE_TL_BR: usize = 8;
-    pub const RESIZE_TR_BL: usize = 9;
-    pub const RESIZE_T_B: usize = 10;
-    pub const RESIZE_L_R: usize = 11;
-    pub const RESIZE_CROSS: usize = 12;
-    pub const INSERT: usize = 13;
-    pub const CROSSHAIR_1: usize = 16;
-    pub const CROSSHAIR_2: usize = 17;
-    pub const CROSSHAIR_3: usize = 18;
-    pub const CROSSHAIR_4: usize = 19;
-    pub const CROSSHAIR_5: usize = 20;
-    pub const CROSSHAIR_6: usize = 24;
-    pub const CROSSHAIR_7: usize = 25;
-    pub const CROSSHAIR_8: usize = 26;
-    pub const CROSSHAIR_9: usize = 27;
-    pub const CROSSHAIR_10: usize = 28;
+    pub const Pointer: usize = 0;
+    pub const Pointer_QUESTION: usize = 1;
+    pub const Pointer_EXCLAMATION: usize = 2;
+    pub const Pointer_CIRCLE: usize = 3;
+    pub const Pointer_X: usize = 4;
+    pub const Pointer_CLOCK: usize = 5;
+    pub const Pointer_BLOCK: usize = 6;
+    pub const Pointer_FACE: usize = 7;
+    pub const Resize_TL_BR: usize = 8;
+    pub const Resize_TR_BL: usize = 9;
+    pub const Resize_T_B: usize = 10;
+    pub const Resize_L_R: usize = 11;
+    pub const Resize_CROSS: usize = 12;
+    pub const Insert: usize = 13;
+    pub const Crosshair_1: usize = 16;
+    pub const Crosshair_2: usize = 17;
+    pub const Crosshair_3: usize = 18;
+    pub const Crosshair_4: usize = 19;
+    pub const Crosshair_5: usize = 20;
+    pub const Crosshair_6: usize = 24;
+    pub const Crosshair_7: usize = 25;
+    pub const Crosshair_8: usize = 26;
+    pub const Crosshair_9: usize = 27;
+    pub const Crosshair_10: usize = 28;
 }
 
 #[derive(Bundle, Default)]
@@ -60,10 +55,10 @@ impl CursorSelectionEvent {
 }
 
 #[derive(Event)]
-pub struct CursorChangeEvent(pub usize);
+pub struct CursorModeChangeEvent(pub CursorMode);
 
-impl CursorChangeEvent {
-    pub fn texture_index(&self) -> usize {
+impl CursorModeChangeEvent {
+    pub fn cursor_mode(&self) -> CursorMode {
         return self.0;
     }
 }
@@ -72,6 +67,17 @@ impl CursorChangeEvent {
 pub struct Cursor {
     pub visibility: Visibility,
     pub location: Vec2,
+    pub mode: CursorMode,
+}
+
+
+#[derive(Clone, Copy, Default, PartialEq)]
+pub enum CursorMode {
+    CameraControl,
+    #[default]
+    Idle,
+    Selecting,
+    Locked,
 }
 
 pub fn setup_cursor(
@@ -104,6 +110,7 @@ pub fn setup_cursor(
                 cursor: Cursor {
                     visibility: Visibility::Visible,
                     location: CURSOR_POSITION_DEFAULT,
+                    ..default()
                 },
                 ..default()
             },
@@ -121,7 +128,7 @@ pub fn setup_cursor(
             },
             TextureAtlas {
                 layout: texture_atlas_layout,
-                index: CursorTextureIndex::POINTER,
+                index: CursorTextureIndex::Pointer,
             }
         ));
     });
@@ -131,18 +138,16 @@ pub fn handle_cursor(
     time: Res<Time>,
     mut commands: Commands,
     mut q_windows: Query<&mut Window, With<PrimaryWindow>>,
-    mut q_camera: Query<&mut PlayerCamera>,
-    mut q_cursor: Query<(&mut Cursor, &mut CursorSelection, Entity, &mut TextureAtlas)>,
+    mut q_cursor: Query<(&mut Cursor, &mut CursorSelection, Entity)>,
     mut ev_mouse: EventReader<MouseMotion>,
-    mut ev_cursor_change: EventWriter<CursorChangeEvent>,
+    mut ev_cursor_change: EventWriter<CursorModeChangeEvent>,
     mut ev_selection: EventWriter<CursorSelectionEvent>,
     mouse: Res<ButtonInput<MouseButton>>,
     key: Res<ButtonInput<KeyCode>>,
 ) {
     let mut window = q_windows.single_mut();
-    let mut camera = q_camera.single_mut();
+    let (mut cursor, mut cursor_selection, entity) = q_cursor.single_mut();
     let delta = time.delta_seconds();
-    let (mut cursor, mut cursor_selection, entity, mut texture_atlas) = q_cursor.single_mut();
 
     commands.entity(entity).insert(
         (cursor.visibility,
@@ -156,55 +161,6 @@ pub fn handle_cursor(
         }
     ));
 
-    if mouse.just_pressed(MouseButton::Right) {
-        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::CROSSHAIR_5));
-    }
-    if mouse.just_released(MouseButton::Right) {
-        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::POINTER));
-    }
-
-    let mut translation = Vec3::ZERO;
-    let rotation_quat = Quat::from_rotation_y(camera.rotation.y);
-
-    if !mouse.pressed(MouseButton::Right) {
-        for mouse_event in ev_mouse.read() {
-            let motion = mouse_event.delta * delta;
-            cursor.location += motion * MOUSE_SENSITIVITY;
-            cursor.location = cursor.location.clamp(Vec2::ZERO, Vec2::ONE);
-        }
-        if cursor.location.x == 0.0 {
-            translation += rotation_quat.mul_vec3(Vec3::NEG_X * SCROLL_SPEED * delta * f32::ln(camera.zoom * E));
-        }
-        if cursor.location.x == 1.0 {
-            translation += rotation_quat.mul_vec3(Vec3::X * SCROLL_SPEED * delta * f32::ln(camera.zoom * E));
-        }
-        if cursor.location.y == 0.0 {
-            translation += rotation_quat.mul_vec3(Vec3::NEG_Z * SCROLL_SPEED * delta * f32::ln(camera.zoom * E));
-        }
-        if cursor.location.y == 1.0 {
-            translation += rotation_quat.mul_vec3(Vec3::Z * SCROLL_SPEED * delta * f32::ln(camera.zoom * E));
-        }
-
-        if mouse.just_pressed(MouseButton::Left) {
-            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::CROSSHAIR_9));
-            texture_atlas.index = 28;
-            cursor_selection.start_pos = Some(cursor.location);
-        }
-        
-        if mouse.just_released(MouseButton::Left) {
-            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::POINTER));
-            cursor_selection.end_pos = Some(cursor.location);
-            if let (Some(start_pos), Some(end_pos)) = (cursor_selection.start_pos, cursor_selection.end_pos) {
-                ev_selection.send(CursorSelectionEvent(Rect {
-                    min: start_pos.min(end_pos),
-                    max: start_pos.max(end_pos)
-                }));
-            }
-        }
-    }
-
-    camera.location += translation;
-
     if mouse.just_pressed(MouseButton::Left) {    
         window.cursor.grab_mode = CursorGrabMode::Confined;
     }
@@ -212,22 +168,74 @@ pub fn handle_cursor(
     if key.just_pressed(KeyCode::AltLeft) {    
         window.cursor.grab_mode = CursorGrabMode::None;
     }
-}
 
-pub fn handle_selection_event(
-    mut ev_selection: EventReader<CursorSelectionEvent>
-) {
-    for selection_event in ev_selection.read() {
-        println!("{:?}", selection_event.rect());
+    match cursor.mode {
+        CursorMode::Idle => {
+            if mouse.just_pressed(MouseButton::Right) {
+                ev_cursor_change.send(CursorModeChangeEvent(CursorMode::CameraControl));
+                return;
+            }
+
+            for mouse_event in ev_mouse.read() {
+                let motion = mouse_event.delta * delta;
+                cursor.location += motion * MOUSE_SENSITIVITY;
+                cursor.location = cursor.location.clamp(Vec2::ZERO, Vec2::ONE);
+            }
+            
+            if mouse.just_pressed(MouseButton::Left) {
+                ev_cursor_change.send(CursorModeChangeEvent(CursorMode::Selecting));
+                cursor_selection.start_pos = Some(cursor.location);
+                return;
+            }
+        },
+        CursorMode::CameraControl => {
+            if mouse.just_released(MouseButton::Right) {
+                ev_cursor_change.send(CursorModeChangeEvent(CursorMode::Idle));
+            }
+        },
+        CursorMode::Selecting => {
+            for mouse_event in ev_mouse.read() {
+                let motion = mouse_event.delta * delta;
+                cursor.location += motion * MOUSE_SENSITIVITY;
+                cursor.location = cursor.location.clamp(Vec2::ZERO, Vec2::ONE);
+            }
+            if mouse.just_released(MouseButton::Left) {
+                ev_cursor_change.send(CursorModeChangeEvent(CursorMode::Idle));
+                cursor_selection.end_pos = Some(cursor.location);
+                if let (Some(start_pos), Some(end_pos)) = (cursor_selection.start_pos, cursor_selection.end_pos) {
+                    ev_selection.send(CursorSelectionEvent(Rect {
+                        min: start_pos.min(end_pos),
+                        max: start_pos.max(end_pos)
+                    }));
+                }
+            }
+        }, 
+        _ => {
+            return;
+        }
     }
 }
 
-pub fn handle_cursor_change_event(
-    mut q_texture_atlas: Query<&mut TextureAtlas, With<Cursor>>,
-    mut ev_cursor_change: EventReader<CursorChangeEvent>
+pub fn handle_cursor_mode_event(
+    mut q_cursor: Query<(&mut Cursor, &mut TextureAtlas)>,
+    mut ev_cursor_change: EventReader<CursorModeChangeEvent>
 ) {
-    let mut texture_atlas = q_texture_atlas.single_mut();
+    let (mut cursor, mut texture_atlas) = q_cursor.single_mut();
     for cursor_change_event in ev_cursor_change.read() {
-        texture_atlas.index = cursor_change_event.texture_index();
+        match cursor_change_event.cursor_mode() {
+            CursorMode::CameraControl => {
+                texture_atlas.index = CursorTextureIndex::Crosshair_5;
+            },
+            CursorMode::Idle => {
+                texture_atlas.index = CursorTextureIndex::Pointer;
+            },
+            CursorMode::Locked => {
+                texture_atlas.index = CursorTextureIndex::Pointer_X;
+            },
+            CursorMode::Selecting => {
+                texture_atlas.index = CursorTextureIndex::Crosshair_10;
+            }
+        }
+        cursor.mode = cursor_change_event.cursor_mode();
     }
 }
