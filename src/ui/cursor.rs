@@ -9,7 +9,7 @@ pub const MOUSE_SENSITIVITY: f32 = 0.2;
 pub const SCROLL_SPEED: f32 = 50.0;
 
 #[derive(Clone, Copy)]
-pub struct CursorTextureIndex(pub usize);
+pub struct CursorTextureIndex;
 
 impl CursorTextureIndex {
     pub const POINTER: usize = 0;
@@ -60,11 +60,11 @@ impl CursorSelectionEvent {
 }
 
 #[derive(Event)]
-pub struct CursorChangeEvent(pub CursorTextureIndex);
+pub struct CursorChangeEvent(pub usize);
 
 impl CursorChangeEvent {
     pub fn texture_index(&self) -> usize {
-        return self.0.0;
+        return self.0;
     }
 }
 
@@ -121,7 +121,7 @@ pub fn setup_cursor(
             },
             TextureAtlas {
                 layout: texture_atlas_layout,
-                index: 5,
+                index: CursorTextureIndex::POINTER,
             }
         ));
     });
@@ -156,15 +156,15 @@ pub fn handle_cursor(
         }
     ));
 
-    let mut translation = Vec3::ZERO;
-    let rotation_quat = Quat::from_rotation_y(camera.rotation.y);
-
     if mouse.just_pressed(MouseButton::Right) {
-        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::CROSSHAIR_5)));
+        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::CROSSHAIR_5));
     }
     if mouse.just_released(MouseButton::Right) {
-        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::POINTER)));
+        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::POINTER));
     }
+
+    let mut translation = Vec3::ZERO;
+    let rotation_quat = Quat::from_rotation_y(camera.rotation.y);
 
     if !mouse.pressed(MouseButton::Right) {
         for mouse_event in ev_mouse.read() {
@@ -186,13 +186,13 @@ pub fn handle_cursor(
         }
 
         if mouse.just_pressed(MouseButton::Left) {
-            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::CROSSHAIR_9)));
+            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::CROSSHAIR_9));
             texture_atlas.index = 28;
             cursor_selection.start_pos = Some(cursor.location);
         }
         
         if mouse.just_released(MouseButton::Left) {
-            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::POINTER)));
+            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex::POINTER));
             cursor_selection.end_pos = Some(cursor.location);
             if let (Some(start_pos), Some(end_pos)) = (cursor_selection.start_pos, cursor_selection.end_pos) {
                 ev_selection.send(CursorSelectionEvent(Rect {
