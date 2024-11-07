@@ -3,7 +3,7 @@ use std::f32::consts::E;
 use avian3d::math::TAU;
 use bevy::{input::mouse::{MouseMotion, MouseWheel}, prelude::*, time::Time};
 
-use crate::{entities::player::{PlayerCamera, CAMERA_LOOK_POINT, CAMERA_MAX_OFFSET_TRANSLATION, CAMERA_MIN_OFFSET_TRANSLATION}, ui::cursor::SCROLL_SPEED};
+use crate::{entities::player::{PlayerCamera, CAMERA_LOOK_POINT, CAMERA_MAX_OFFSET_TRANSLATION, CAMERA_MIN_OFFSET_TRANSLATION}, ui::cursor::{CursorChangeEvent, CursorTextureIndex, SCROLL_SPEED}};
 
 use super::controls::InputMap;
 

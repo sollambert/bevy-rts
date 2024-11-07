@@ -8,6 +8,36 @@ pub const CURSOR_POSITION_DEFAULT: Vec2 = Vec2::new(0.5, 0.5);
 pub const MOUSE_SENSITIVITY: f32 = 0.2;
 pub const SCROLL_SPEED: f32 = 50.0;
 
+#[derive(Clone, Copy)]
+pub struct CursorTextureIndex(pub usize);
+
+impl CursorTextureIndex {
+    pub const POINTER: usize = 0;
+    pub const POINTER_QUESTION: usize = 1;
+    pub const POINTER_EXCLAMATION: usize = 2;
+    pub const POINTER_CIRCLE: usize = 3;
+    pub const POINTER_X: usize = 4;
+    pub const POINTER_CLOCK: usize = 5;
+    pub const POINTER_BLOCK: usize = 6;
+    pub const POINTER_FACE: usize = 7;
+    pub const RESIZE_TL_BR: usize = 8;
+    pub const RESIZE_TR_BL: usize = 9;
+    pub const RESIZE_T_B: usize = 10;
+    pub const RESIZE_L_R: usize = 11;
+    pub const RESIZE_CROSS: usize = 12;
+    pub const INSERT: usize = 13;
+    pub const CROSSHAIR_1: usize = 16;
+    pub const CROSSHAIR_2: usize = 17;
+    pub const CROSSHAIR_3: usize = 18;
+    pub const CROSSHAIR_4: usize = 19;
+    pub const CROSSHAIR_5: usize = 20;
+    pub const CROSSHAIR_6: usize = 24;
+    pub const CROSSHAIR_7: usize = 25;
+    pub const CROSSHAIR_8: usize = 26;
+    pub const CROSSHAIR_9: usize = 27;
+    pub const CROSSHAIR_10: usize = 28;
+}
+
 #[derive(Bundle, Default)]
 pub struct CursorBundle {
     pub cursor: Cursor,
@@ -21,11 +51,20 @@ pub struct CursorSelection {
 }
 
 #[derive(Event)]
-pub struct CursorSelectionEvent(Rect);
+pub struct CursorSelectionEvent(pub Rect);
 
 impl CursorSelectionEvent {
     pub fn rect(&self) -> Rect{
         return self.0;
+    }
+}
+
+#[derive(Event)]
+pub struct CursorChangeEvent(pub CursorTextureIndex);
+
+impl CursorChangeEvent {
+    pub fn texture_index(&self) -> usize {
+        return self.0.0;
     }
 }
 
@@ -93,8 +132,9 @@ pub fn handle_cursor(
     mut commands: Commands,
     mut q_windows: Query<&mut Window, With<PrimaryWindow>>,
     mut q_camera: Query<&mut PlayerCamera>,
-    mut q_cursor: Query<(&mut Cursor, &mut CursorSelection, Entity)>,
+    mut q_cursor: Query<(&mut Cursor, &mut CursorSelection, Entity, &mut TextureAtlas)>,
     mut ev_mouse: EventReader<MouseMotion>,
+    mut ev_cursor_change: EventWriter<CursorChangeEvent>,
     mut ev_selection: EventWriter<CursorSelectionEvent>,
     mouse: Res<ButtonInput<MouseButton>>,
     key: Res<ButtonInput<KeyCode>>,
@@ -102,7 +142,7 @@ pub fn handle_cursor(
     let mut window = q_windows.single_mut();
     let mut camera = q_camera.single_mut();
     let delta = time.delta_seconds();
-    let (mut cursor, mut cursor_selection, entity) = q_cursor.single_mut();
+    let (mut cursor, mut cursor_selection, entity, mut texture_atlas) = q_cursor.single_mut();
 
     commands.entity(entity).insert(
         (cursor.visibility,
@@ -118,6 +158,13 @@ pub fn handle_cursor(
 
     let mut translation = Vec3::ZERO;
     let rotation_quat = Quat::from_rotation_y(camera.rotation.y);
+
+    if mouse.just_pressed(MouseButton::Right) {
+        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::CROSSHAIR_5)));
+    }
+    if mouse.just_released(MouseButton::Right) {
+        ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::POINTER)));
+    }
 
     if !mouse.pressed(MouseButton::Right) {
         for mouse_event in ev_mouse.read() {
@@ -139,10 +186,13 @@ pub fn handle_cursor(
         }
 
         if mouse.just_pressed(MouseButton::Left) {
+            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::CROSSHAIR_9)));
+            texture_atlas.index = 28;
             cursor_selection.start_pos = Some(cursor.location);
         }
         
         if mouse.just_released(MouseButton::Left) {
+            ev_cursor_change.send(CursorChangeEvent(CursorTextureIndex(CursorTextureIndex::POINTER)));
             cursor_selection.end_pos = Some(cursor.location);
             if let (Some(start_pos), Some(end_pos)) = (cursor_selection.start_pos, cursor_selection.end_pos) {
                 ev_selection.send(CursorSelectionEvent(Rect {
@@ -169,5 +219,15 @@ pub fn handle_selection_event(
 ) {
     for selection_event in ev_selection.read() {
         println!("{:?}", selection_event.rect());
+    }
+}
+
+pub fn handle_cursor_change_event(
+    mut q_texture_atlas: Query<&mut TextureAtlas, With<Cursor>>,
+    mut ev_cursor_change: EventReader<CursorChangeEvent>
+) {
+    let mut texture_atlas = q_texture_atlas.single_mut();
+    for cursor_change_event in ev_cursor_change.read() {
+        texture_atlas.index = cursor_change_event.texture_index();
     }
 }
