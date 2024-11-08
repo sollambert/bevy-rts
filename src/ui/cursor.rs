@@ -1,4 +1,9 @@
-use bevy::{input::mouse::MouseMotion, prelude::*, window::*};
+use std::borrow::BorrowMut;
+
+use bevy::{input::mouse::MouseMotion, prelude::*, render::camera::RenderTarget, window::*};
+use bevy_mod_picking::{pointer::{InputPress, Location, Uuid}, prelude::{Listener, Pickable, PointerId, PointerLocation}, PointerBundle};
+
+use crate::entities::player::PlayerCamera;
 
 pub const CURSOR_POSITION_DEFAULT: Vec2 = Vec2::new(0.5, 0.5);
 pub const MOUSE_SENSITIVITY: f32 = 0.2;
@@ -44,6 +49,9 @@ pub struct CursorSelection {
     pub start_pos: Option<Vec2>,
     pub end_pos: Option<Vec2>
 }
+
+#[derive(Component, Default)]
+pub struct CursorTexture;
 
 #[derive(Event)]
 pub struct CursorSelectionEvent(pub Rect);
@@ -94,7 +102,22 @@ pub fn setup_cursor(
     let layout = TextureAtlasLayout::from_grid(UVec2::new(16, 16), 8, 6, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
     window.set_cursor_position(Some(cursor_position));
-    commands.spawn(
+    commands.spawn((
+        PointerBundle::new(PointerId::Custom(Uuid::new_v4())),
+        CursorBundle {
+            cursor: Cursor {
+                visibility: Visibility::Visible,
+                location: CURSOR_POSITION_DEFAULT,
+                ..default()
+            },
+            ..default()
+        }
+    ));
+    commands.spawn((
+        Pickable {
+            should_block_lower: false,
+            is_hoverable: false,
+        },
         NodeBundle {
             style: Style {
                 height: Val::Vh(100.),
@@ -103,17 +126,14 @@ pub fn setup_cursor(
                 ..default()
             },
             ..default()
-        }
+        })
     ).with_children(|parent| {
         parent.spawn((
-            CursorBundle {
-                cursor: Cursor {
-                    visibility: Visibility::Visible,
-                    location: CURSOR_POSITION_DEFAULT,
-                    ..default()
-                },
-                ..default()
+            Pickable {
+                should_block_lower: false,
+                is_hoverable: false,
             },
+            CursorTexture,
             ImageBundle {
                 image: texture.into(),
                 style: Style {
@@ -134,22 +154,47 @@ pub fn setup_cursor(
     });
 }
 
+pub fn handle_mouse_buttons(
+    mut q_pointer: Query<&PointerId, With<Cursor>>,
+    mut q_mouse_pointer: Query<&PointerId, Without<Cursor>>,
+    mut ev_input_reader: EventReader<InputPress>,
+) {
+    // let pointer_id = q_pointer.single_mut();
+    // let mouse_pointer_id = q_mouse_pointer.single_mut();
+    // let mut pointer_input: Option<InputPress> = None;
+    // for input in ev_input_reader.read() {
+    //     if input.pointer_id == *mouse_pointer_id {
+    //         pointer_input = Some(InputPress {
+    //             pointer_id: *pointer_id,
+    //             ..*input
+    //         })
+    //     }
+    // }
+    // if let Some(pointer_input) = pointer_input {
+    // }
+}
+
 pub fn handle_cursor(
     time: Res<Time>,
     mut commands: Commands,
-    mut q_windows: Query<&mut Window, With<PrimaryWindow>>,
+    mut q_windows: Query<(&mut Window, Entity)>,
+    mut q_camera: Query<(&mut PlayerCamera, &mut Camera), Without<Cursor>>,
+    mut q_pointer: Query<(&PointerId, &mut PointerLocation), With<Cursor>>,
     mut q_cursor: Query<(&mut Cursor, &mut CursorSelection, Entity)>,
+    mut q_cursor_texture_entity: Query<(Entity), With<CursorTexture>>,
     mut ev_mouse: EventReader<MouseMotion>,
     mut ev_cursor_change: EventWriter<CursorModeChangeEvent>,
     mut ev_selection: EventWriter<CursorSelectionEvent>,
     mouse: Res<ButtonInput<MouseButton>>,
     key: Res<ButtonInput<KeyCode>>,
 ) {
-    let mut window = q_windows.single_mut();
+    let (mut window, mut window_entity) = q_windows.single_mut();
+    let (camera, camera_3d) = q_camera.single_mut();
     let (mut cursor, mut cursor_selection, entity) = q_cursor.single_mut();
+    let mut cursor_texture_entity = q_cursor_texture_entity.single_mut();
     let delta = time.delta_seconds();
 
-    commands.entity(entity).insert(
+    commands.entity(cursor_texture_entity).insert(
         (cursor.visibility,
         Style {
             position_type: PositionType::Absolute,
@@ -169,17 +214,33 @@ pub fn handle_cursor(
         window.cursor.grab_mode = CursorGrabMode::None;
     }
 
+    if cursor.mode == CursorMode::Idle || cursor.mode == CursorMode::Selecting { 
+        for mouse_event in ev_mouse.read() {
+            let motion = mouse_event.delta * delta;
+            cursor.location += motion * MOUSE_SENSITIVITY;
+            cursor.location = cursor.location.clamp(Vec2::ZERO, Vec2::ONE);
+        }
+    }
+
+    if let Ok((pointer_id, mut pointer_location)) = q_pointer.get_single_mut() {
+        pointer_location.location = Some(Location {
+            position:
+                Vec2::new( 
+                    cursor.location.x * window.width(),
+                    cursor.location.y * window.height()
+                ),
+            target: RenderTarget::Window(WindowRef::Primary)
+                .normalize(Some(window_entity))
+                .unwrap()
+        });
+    }
+
+    // Handle state change
     match cursor.mode {
         CursorMode::Idle => {
             if mouse.just_pressed(MouseButton::Right) {
                 ev_cursor_change.send(CursorModeChangeEvent(CursorMode::CameraControl));
                 return;
-            }
-
-            for mouse_event in ev_mouse.read() {
-                let motion = mouse_event.delta * delta;
-                cursor.location += motion * MOUSE_SENSITIVITY;
-                cursor.location = cursor.location.clamp(Vec2::ZERO, Vec2::ONE);
             }
             
             if mouse.just_pressed(MouseButton::Left) {
@@ -194,11 +255,6 @@ pub fn handle_cursor(
             }
         },
         CursorMode::Selecting => {
-            for mouse_event in ev_mouse.read() {
-                let motion = mouse_event.delta * delta;
-                cursor.location += motion * MOUSE_SENSITIVITY;
-                cursor.location = cursor.location.clamp(Vec2::ZERO, Vec2::ONE);
-            }
             if mouse.just_released(MouseButton::Left) {
                 ev_cursor_change.send(CursorModeChangeEvent(CursorMode::Idle));
                 cursor_selection.end_pos = Some(cursor.location);
@@ -217,10 +273,12 @@ pub fn handle_cursor(
 }
 
 pub fn handle_cursor_mode_event(
-    mut q_cursor: Query<(&mut Cursor, &mut TextureAtlas)>,
+    mut q_cursor: Query<&mut Cursor>,
+    mut q_cursor_texture: Query<&mut TextureAtlas, With<CursorTexture>>,
     mut ev_cursor_change: EventReader<CursorModeChangeEvent>
 ) {
-    let (mut cursor, mut texture_atlas) = q_cursor.single_mut();
+    let mut cursor = q_cursor.single_mut();
+    let mut texture_atlas = q_cursor_texture.single_mut();
     for cursor_change_event in ev_cursor_change.read() {
         match cursor_change_event.cursor_mode() {
             CursorMode::CameraControl => {

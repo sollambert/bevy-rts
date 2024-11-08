@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_mod_picking::prelude::Pickable;
 
 use crate::Game;
 
@@ -19,6 +20,10 @@ pub fn setup_debug_screen(
         visibility = Visibility::Visible;
     }
     commands.spawn((
+        Pickable {
+            should_block_lower: false,
+            is_hoverable: false,
+        },
         DebugDisplay {
             visibility,
         },

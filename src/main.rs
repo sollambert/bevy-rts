@@ -1,8 +1,9 @@
 use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, RigidBody}, PhysicsPlugins};
 use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
+use bevy_mod_picking::{debug::DebugPickingMode, events::{Click, Over, Pointer}, prelude::{AvianBackendSettings, AvianPickable, On, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{controls::{handle_debug_keys, handle_key_window_functions}, player::{handle_camera_move, handle_camera_transform, handle_camera_zoom, handle_selection_event}};
 use entities::{player::{PlayerBundle, PlayerCamera}, EntityCollisionLayers};
-use ui::cursor::{handle_cursor, handle_cursor_mode_event, setup_cursor, CursorModeChangeEvent, CursorSelectionEvent};
+use ui::cursor::{handle_cursor, handle_cursor_mode_event, handle_mouse_buttons, setup_cursor, CursorModeChangeEvent, CursorSelectionEvent};
 use utils::debug::{setup_debug_screen, update_debug_screen};
 
 mod controls;
@@ -11,10 +12,16 @@ mod ui;
 mod utils;
 
 fn main() {
-    let plugins = (DefaultPlugins,
-        PhysicsPlugins::default());
+    let plugins = (
+        DefaultPlugins,
+        DefaultPickingPlugins.build().disable::<RaycastBackend>(),
+        PhysicsPlugins::default()
+    );
     let mut app = App::new();
-    app.add_plugins(plugins);
+    app.add_plugins(plugins)
+        .insert_resource(AvianBackendSettings {
+            require_markers: true, // Optional: only needed when you want fine-grained control over which cameras and entities should be used with the Avian picking backend. This is disabled by default, and no marker components are required on cameras or colliders. This resource is inserted by default, you only need to add it if you want to override the default settings.
+        });
     app.init_resource::<Game>()
     .add_event::<CursorModeChangeEvent>()
         .add_event::<CursorSelectionEvent>()
@@ -22,6 +29,7 @@ fn main() {
         .add_systems(Startup, setup_cursor)
         .add_systems(Update, handle_cursor)
         .add_systems(Update, handle_cursor_mode_event)
+        .add_systems(Update, handle_mouse_buttons)
         .add_systems(Update, handle_selection_event)
         .add_systems(Update, handle_key_window_functions)
         .add_systems(Update, handle_camera_move)
@@ -30,6 +38,7 @@ fn main() {
     if cfg!(debug_assertions) {
         let debug_plugins = PhysicsDebugPlugin::default();
         app.add_plugins(debug_plugins)
+            .insert_resource(DebugPickingMode::Normal)
             .add_systems(Startup, setup_debug_screen)
             .add_systems(Update, handle_debug_keys)
             .add_systems(Update, update_debug_screen);
@@ -91,6 +100,8 @@ fn setup(
     ));
     commands.spawn((
         RigidBody::Static,
+        AvianPickable,
+        PickableBundle::default(),
         Collider::cuboid(10.0, 10.0, 10.0),
         CollisionLayers::new(EntityCollisionLayers::Ground, LayerMask::ALL),
         PbrBundle {
@@ -115,6 +126,11 @@ fn setup(
     // Dynamic physics object with a collision shape and initial angular velocity
     for _i in 0..10 {
         commands.spawn((
+            AvianPickable,
+            PickableBundle::default(),
+            On::<Pointer<Click>>::target_component_mut::<Transform>(|over, transform| {
+                transform.rotate_local_y(50.0)
+            }),
             RigidBody::Dynamic,
             Collider::cuboid(1.0, 1.0, 1.0),
             CollisionLayers::new(EntityCollisionLayers::Ground, LayerMask::ALL),
