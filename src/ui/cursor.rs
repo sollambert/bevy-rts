@@ -1,7 +1,5 @@
-use std::borrow::BorrowMut;
-
 use bevy::{input::mouse::MouseMotion, prelude::*, render::camera::RenderTarget, window::*};
-use bevy_mod_picking::{pointer::{InputPress, Location, Uuid}, prelude::{Listener, Pickable, PointerId, PointerLocation}, PointerBundle};
+use bevy_mod_picking::{pointer::{InputPress, Location, PressDirection, Uuid}, prelude::{Pickable, PointerButton, PointerId, PointerLocation}, PointerBundle};
 
 use crate::entities::player::PlayerCamera;
 
@@ -13,29 +11,29 @@ pub struct CursorTextureIndex;
 
 impl CursorTextureIndex {
     pub const Pointer: usize = 0;
-    pub const Pointer_QUESTION: usize = 1;
-    pub const Pointer_EXCLAMATION: usize = 2;
-    pub const Pointer_CIRCLE: usize = 3;
-    pub const Pointer_X: usize = 4;
-    pub const Pointer_CLOCK: usize = 5;
-    pub const Pointer_BLOCK: usize = 6;
-    pub const Pointer_FACE: usize = 7;
-    pub const Resize_TL_BR: usize = 8;
-    pub const Resize_TR_BL: usize = 9;
-    pub const Resize_T_B: usize = 10;
-    pub const Resize_L_R: usize = 11;
-    pub const Resize_CROSS: usize = 12;
+    pub const PointerQuestion: usize = 1;
+    pub const PointerExclamation: usize = 2;
+    pub const PointerCircle: usize = 3;
+    pub const PointerX: usize = 4;
+    pub const PointerClock: usize = 5;
+    pub const PointerBlock: usize = 6;
+    pub const PointerFace: usize = 7;
+    pub const ResizeTlBr: usize = 8;
+    pub const ResizeTrBl: usize = 9;
+    pub const ResizeTB: usize = 10;
+    pub const ResizeLR: usize = 11;
+    pub const ResizeCross: usize = 12;
     pub const Insert: usize = 13;
-    pub const Crosshair_1: usize = 16;
-    pub const Crosshair_2: usize = 17;
-    pub const Crosshair_3: usize = 18;
-    pub const Crosshair_4: usize = 19;
-    pub const Crosshair_5: usize = 20;
-    pub const Crosshair_6: usize = 24;
-    pub const Crosshair_7: usize = 25;
-    pub const Crosshair_8: usize = 26;
-    pub const Crosshair_9: usize = 27;
-    pub const Crosshair_10: usize = 28;
+    pub const Crosshair1: usize = 16;
+    pub const Crosshair2: usize = 17;
+    pub const Crosshair3: usize = 18;
+    pub const Crosshair4: usize = 19;
+    pub const Crosshair5: usize = 20;
+    pub const Crosshair6: usize = 24;
+    pub const Crosshair7: usize = 25;
+    pub const Crosshair8: usize = 26;
+    pub const Crosshair9: usize = 27;
+    pub const Crosshair10: usize = 28;
 }
 
 #[derive(Bundle, Default)]
@@ -92,16 +90,24 @@ pub fn setup_cursor(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut q_windows: Query<&mut Window, With<PrimaryWindow>>,
+    q_mouse_pointer: Query<(&mut PointerId, Entity)>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     let mut window = q_windows.single_mut();
     window.cursor.visible = false;
     let cursor_position = window.size() * CURSOR_POSITION_DEFAULT;
+    
+    let (mouse_pointer, mouse_pointer_entity) = q_mouse_pointer.single();
+    if mouse_pointer.is_mouse() {
+        commands.entity(mouse_pointer_entity).despawn();
+    }
 
     let texture: Handle<Image> = asset_server.load("textures/cursor.png");
     let layout = TextureAtlasLayout::from_grid(UVec2::new(16, 16), 8, 6, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
+    
     window.set_cursor_position(Some(cursor_position));
+    
     commands.spawn((
         PointerBundle::new(PointerId::Custom(Uuid::new_v4())),
         CursorBundle {
@@ -154,24 +160,41 @@ pub fn setup_cursor(
     });
 }
 
-pub fn handle_mouse_buttons(
+// Trigger buffered input press events for mapping mouse pointer events to custom pointer
+pub fn handle_input_press(
+    mouse: Res<ButtonInput<MouseButton>>,
     mut q_pointer: Query<&PointerId, With<Cursor>>,
-    mut q_mouse_pointer: Query<&PointerId, Without<Cursor>>,
-    mut ev_input_reader: EventReader<InputPress>,
+    mut ev_input: EventWriter<InputPress>
 ) {
-    // let pointer_id = q_pointer.single_mut();
-    // let mouse_pointer_id = q_mouse_pointer.single_mut();
-    // let mut pointer_input: Option<InputPress> = None;
-    // for input in ev_input_reader.read() {
-    //     if input.pointer_id == *mouse_pointer_id {
-    //         pointer_input = Some(InputPress {
-    //             pointer_id: *pointer_id,
-    //             ..*input
-    //         })
-    //     }
-    // }
-    // if let Some(pointer_input) = pointer_input {
-    // }
+    let to_pointer_button = |mouse_button: MouseButton| -> Option<PointerButton> {
+        match mouse_button {
+            MouseButton::Left => Some(PointerButton::Primary),
+            MouseButton::Right => Some(PointerButton::Secondary),
+            MouseButton::Middle => Some(PointerButton::Middle),
+            _ => None
+        }
+    };
+    let pointer_id = *q_pointer.single_mut();
+    for pressed in mouse.get_just_pressed() {
+        if let Some(button) = to_pointer_button(*pressed) {
+            let input_event = InputPress {
+                pointer_id,
+                button,
+                direction: PressDirection::Down,
+            };
+            ev_input.send(input_event);
+        }
+    }
+    for released in mouse.get_just_released() {
+        if let Some(button) = to_pointer_button(*released) {
+            let input_event = InputPress {
+                pointer_id,
+                button,
+                direction: PressDirection::Up,
+            };
+            ev_input.send(input_event);
+        }
+    }
 }
 
 pub fn handle_cursor(
@@ -181,7 +204,7 @@ pub fn handle_cursor(
     mut q_camera: Query<(&mut PlayerCamera, &mut Camera), Without<Cursor>>,
     mut q_pointer: Query<(&PointerId, &mut PointerLocation), With<Cursor>>,
     mut q_cursor: Query<(&mut Cursor, &mut CursorSelection, Entity)>,
-    mut q_cursor_texture_entity: Query<(Entity), With<CursorTexture>>,
+    mut q_cursor_texture_entity: Query<Entity, With<CursorTexture>>,
     mut ev_mouse: EventReader<MouseMotion>,
     mut ev_cursor_change: EventWriter<CursorModeChangeEvent>,
     mut ev_selection: EventWriter<CursorSelectionEvent>,
@@ -206,11 +229,11 @@ pub fn handle_cursor(
         }
     ));
 
-    if mouse.just_pressed(MouseButton::Left) {    
+    if mouse.just_pressed(MouseButton::Left) {
         window.cursor.grab_mode = CursorGrabMode::Confined;
     }
 
-    if key.just_pressed(KeyCode::AltLeft) {    
+    if key.just_pressed(KeyCode::AltLeft) {
         window.cursor.grab_mode = CursorGrabMode::None;
     }
 
@@ -282,16 +305,16 @@ pub fn handle_cursor_mode_event(
     for cursor_change_event in ev_cursor_change.read() {
         match cursor_change_event.cursor_mode() {
             CursorMode::CameraControl => {
-                texture_atlas.index = CursorTextureIndex::Crosshair_5;
+                texture_atlas.index = CursorTextureIndex::Crosshair5;
             },
             CursorMode::Idle => {
                 texture_atlas.index = CursorTextureIndex::Pointer;
             },
             CursorMode::Locked => {
-                texture_atlas.index = CursorTextureIndex::Pointer_X;
+                texture_atlas.index = CursorTextureIndex::PointerX;
             },
             CursorMode::Selecting => {
-                texture_atlas.index = CursorTextureIndex::Crosshair_10;
+                texture_atlas.index = CursorTextureIndex::Crosshair10;
             }
         }
         cursor.mode = cursor_change_event.cursor_mode();

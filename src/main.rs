@@ -1,9 +1,9 @@
 use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, RigidBody}, PhysicsPlugins};
 use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
-use bevy_mod_picking::{debug::DebugPickingMode, events::{Click, Over, Pointer}, prelude::{AvianBackendSettings, AvianPickable, On, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
+use bevy_mod_picking::{debug::DebugPickingMode, events::{Click, Drag, Pointer}, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, On, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{controls::{handle_debug_keys, handle_key_window_functions}, player::{handle_camera_move, handle_camera_transform, handle_camera_zoom, handle_selection_event}};
-use entities::{player::{PlayerBundle, PlayerCamera}, EntityCollisionLayers};
-use ui::cursor::{handle_cursor, handle_cursor_mode_event, handle_mouse_buttons, setup_cursor, CursorModeChangeEvent, CursorSelectionEvent};
+use entities::{player::{PlayerBundle, PlayerCamera}, world_objects::handle_world_object_drag, EntityCollisionLayers};
+use ui::cursor::{handle_cursor, handle_cursor_mode_event, handle_input_press, setup_cursor, CursorModeChangeEvent, CursorSelectionEvent};
 use utils::debug::{setup_debug_screen, update_debug_screen};
 
 mod controls;
@@ -14,7 +14,9 @@ mod utils;
 fn main() {
     let plugins = (
         DefaultPlugins,
-        DefaultPickingPlugins.build().disable::<RaycastBackend>(),
+        DefaultPickingPlugins.build()
+            .disable::<RaycastBackend>()
+            .enable::<AvianBackend>(),
         PhysicsPlugins::default()
     );
     let mut app = App::new();
@@ -26,15 +28,16 @@ fn main() {
     .add_event::<CursorModeChangeEvent>()
         .add_event::<CursorSelectionEvent>()
         .add_systems(Startup, setup)
-        .add_systems(Startup, setup_cursor)
+        .add_systems(PostStartup, setup_cursor)
         .add_systems(Update, handle_cursor)
         .add_systems(Update, handle_cursor_mode_event)
-        .add_systems(Update, handle_mouse_buttons)
         .add_systems(Update, handle_selection_event)
         .add_systems(Update, handle_key_window_functions)
         .add_systems(Update, handle_camera_move)
         .add_systems(Update, handle_camera_zoom)
-        .add_systems(Update, handle_camera_transform);
+        .add_systems(Update, handle_camera_transform)
+        .add_systems(Update, handle_input_press)
+        .add_systems(Update, handle_world_object_drag);
     if cfg!(debug_assertions) {
         let debug_plugins = PhysicsDebugPlugin::default();
         app.add_plugins(debug_plugins)
@@ -69,7 +72,6 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-
     // // spawn generator
     // commands.spawn(SceneBundle {
     //     scene: asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/Generator.glb")),
@@ -77,17 +79,20 @@ fn setup(
     // });
 
     commands.spawn((
+        AvianPickable,
         PlayerBundle {
             player_camera: PlayerCamera {
                 zoom: 5.0,
                 ..default()
             },
             ..default()
-        }, Camera3dBundle::default()));
+        }, Camera3dBundle::default()
+    ));
     
     // Static physics object with a collision shape
     commands.spawn((
         RigidBody::Static,
+        AvianPickable,
         Collider::cylinder(200.0, 0.1),
         CollisionLayers::new(EntityCollisionLayers::Ground, LayerMask::ALL),
         Friction::new(0.5),
@@ -98,6 +103,7 @@ fn setup(
             ..default()
         },
     ));
+
     commands.spawn((
         RigidBody::Static,
         AvianPickable,
@@ -111,6 +117,7 @@ fn setup(
             ..default()
         },
     ));
+
     commands.spawn((
         RigidBody::Static,
         Collider::cone(10.0, 1.0),
@@ -128,9 +135,6 @@ fn setup(
         commands.spawn((
             AvianPickable,
             PickableBundle::default(),
-            On::<Pointer<Click>>::target_component_mut::<Transform>(|over, transform| {
-                transform.rotate_local_y(50.0)
-            }),
             RigidBody::Dynamic,
             Collider::cuboid(1.0, 1.0, 1.0),
             CollisionLayers::new(EntityCollisionLayers::Ground, LayerMask::ALL),
