@@ -7,4 +7,5 @@ pub mod world_objects;
 pub enum EntityCollisionLayers {
     Ground,
     Interaction,
+    Selectable,
 }

@@ -1,9 +1,9 @@
 use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, RigidBody}, PhysicsPlugins};
 use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
-use bevy_mod_picking::{debug::DebugPickingMode, events::{Click, Drag, Pointer}, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, On, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
-use controls::{controls::{handle_debug_keys, handle_key_window_functions}, player::{handle_camera_move, handle_camera_transform, handle_camera_zoom, handle_selection_event}};
-use entities::{player::{PlayerBundle, PlayerCamera}, world_objects::handle_world_object_drag, EntityCollisionLayers};
-use ui::cursor::{handle_cursor, handle_cursor_mode_event, handle_input_press, setup_cursor, CursorModeChangeEvent, CursorSelectionEvent};
+use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
+use controls::{controls::{handle_debug_keys, handle_key_window_functions}, player::{handle_camera_move, handle_camera_transform, handle_camera_zoom}};
+use entities::{player::{PlayerBundle, PlayerCamera}, world_objects::{handle_selection, handle_world_object_drag, Selectable}, EntityCollisionLayers};
+use ui::cursor::{handle_cursor, handle_cursor_mode_event, handle_input_press, setup_cursor, CursorModeChangeEvent};
 use utils::debug::{setup_debug_screen, update_debug_screen};
 
 mod controls;
@@ -26,18 +26,17 @@ fn main() {
         });
     app.init_resource::<Game>()
     .add_event::<CursorModeChangeEvent>()
-        .add_event::<CursorSelectionEvent>()
         .add_systems(Startup, setup)
         .add_systems(PostStartup, setup_cursor)
         .add_systems(Update, handle_cursor)
         .add_systems(Update, handle_cursor_mode_event)
-        .add_systems(Update, handle_selection_event)
         .add_systems(Update, handle_key_window_functions)
         .add_systems(Update, handle_camera_move)
         .add_systems(Update, handle_camera_zoom)
         .add_systems(Update, handle_camera_transform)
         .add_systems(Update, handle_input_press)
-        .add_systems(Update, handle_world_object_drag);
+        .add_systems(Update, handle_world_object_drag)
+        .add_systems(Update, handle_selection);
     if cfg!(debug_assertions) {
         let debug_plugins = PhysicsDebugPlugin::default();
         app.add_plugins(debug_plugins)
@@ -93,6 +92,10 @@ fn setup(
     commands.spawn((
         RigidBody::Static,
         AvianPickable,
+        Pickable {
+            should_block_lower: true,
+            is_hoverable: false,
+        },
         Collider::cylinder(200.0, 0.1),
         CollisionLayers::new(EntityCollisionLayers::Ground, LayerMask::ALL),
         Friction::new(0.5),
@@ -137,8 +140,9 @@ fn setup(
             PickableBundle::default(),
             RigidBody::Dynamic,
             Collider::cuboid(1.0, 1.0, 1.0),
-            CollisionLayers::new(EntityCollisionLayers::Ground, LayerMask::ALL),
+            CollisionLayers::new(EntityCollisionLayers::Selectable, LayerMask::ALL),
             AngularVelocity(Vec3::new(2.5, 3.5, 1.5)),
+            Selectable,
             PbrBundle {
                 mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
                 material: materials.add(Color::srgb_u8(124, 144, 255)),

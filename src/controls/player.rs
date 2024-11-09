@@ -1,9 +1,9 @@
 use std::f32::consts::E;
 
 use avian3d::math::TAU;
-use bevy::{input::mouse::{MouseMotion, MouseWheel}, prelude::*, time::Time, window::PrimaryWindow};
+use bevy::{input::mouse::{MouseMotion, MouseWheel}, prelude::*, time::Time};
 
-use crate::{entities::player::{PlayerCamera, CAMERA_LOOK_POINT, CAMERA_MAX_OFFSET_TRANSLATION, CAMERA_MIN_OFFSET_TRANSLATION}, ui::cursor::{Cursor, CursorMode, CursorSelectionEvent}};
+use crate::{entities::player::{PlayerCamera, CAMERA_LOOK_POINT, CAMERA_MAX_OFFSET_TRANSLATION, CAMERA_MIN_OFFSET_TRANSLATION}, ui::cursor::{Cursor, CursorMode}};
 
 use super::controls::InputMap;
 
@@ -97,16 +97,4 @@ pub fn handle_camera_transform(
     let (camera, mut camera_transform) = q_camera.single_mut();
     camera_transform.translation =  camera.location + camera.offset;
     camera_transform.look_at(camera.location + CAMERA_LOOK_POINT, Dir3::Y);
-}
-
-pub fn handle_selection_event(
-    mut q_windows: Query<&mut Window, With<PrimaryWindow>>,
-    mut q_camera: Query<(&mut PlayerCamera, &mut Camera3d)>,
-    mut ev_selection: EventReader<CursorSelectionEvent>
-) {
-    let( mut _camera, mut _camera3d) = q_camera.single_mut();
-    let mut _window = q_windows.single_mut();
-    for selection_event in ev_selection.read() {
-        println!("{:?}", selection_event.rect());
-    }
 }
