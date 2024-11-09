@@ -1,4 +1,4 @@
-use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, PhysicsGizmos, RigidBody}, PhysicsPlugins};
+use avian3d::{math::*, prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, PhysicsGizmos, RigidBody}, PhysicsPlugins};
 use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
 use bevy_contact_projective_decals::DecalPlugin;
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
@@ -100,7 +100,7 @@ fn setup(
         Friction::new(0.5),
         PbrBundle {
             mesh: meshes.add(Cylinder::new(200.0, 0.1)),
-            material: materials.add(Color::WHITE),
+            material: materials.add(Color::linear_rgb(0.25, 0.25, 0.25)),
             transform: Transform::from_xyz(0.0, -0.05, 0.0),
             ..default()
         },
@@ -108,8 +108,6 @@ fn setup(
 
     commands.spawn((
         RigidBody::Static,
-        AvianPickable,
-        PickableBundle::default(),
         Collider::cuboid(10.0, 10.0, 10.0),
         CollisionLayers::new(EntityCollisionLayers::Ground, LayerMask::ALL),
         PbrBundle {
@@ -136,7 +134,13 @@ fn setup(
     for _i in 0..10 {
         commands.spawn((
             AvianPickable,
-            PickableBundle::default(),
+            PickableBundle {
+                pickable: Pickable {
+                    should_block_lower: false,
+                    is_hoverable: true,
+                },
+                ..default()
+            },
             RigidBody::Dynamic,
             Collider::cuboid(1.0, 1.0, 1.0),
             CollisionLayers::new(EntityCollisionLayers::Selectable, LayerMask::ALL),
@@ -160,6 +164,19 @@ fn setup(
             ..default()
         },
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            color: Color::hsl(42.0, 69., 77.),
+            illuminance: 1_000.,
+            ..default()
+        },
+        transform: Transform {
+            rotation: Quat::from_euler(EulerRot::YXZ, 0.0, -PI / 1.8, 0.0),
+            ..default()
+        },
         ..default()
     });
 }

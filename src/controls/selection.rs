@@ -85,8 +85,8 @@ pub fn handle_selection(
                         CollisionLayers::from_bits(EntityCollisionLayers::Interaction.to_bits(), EntityCollisionLayers::Selectable.to_bits()),
                         PbrBundle {
                             material: materials.add(StandardMaterial {
-                                alpha_mode: AlphaMode::Add,
-                                base_color: Color::linear_rgba(0.25, 0.25, 0.25, 0.25),
+                                alpha_mode: AlphaMode::Premultiplied,
+                                base_color: Color::linear_rgba(0., 0., 0., 0.25),
                                 cull_mode: None,
                                 diffuse_transmission: 1.0,
                                 double_sided: true,
