@@ -5,6 +5,8 @@ use bevy_mod_picking::prelude::*;
 
 use crate::{entities::EntityCollisionLayers, ui::cursor::*};
 
+#[derive(Component, Default)]
+pub struct Selected;
 
 #[derive(Component, Default)]
 pub struct Selectable {
@@ -21,26 +23,38 @@ pub enum SelectionMask {
     UnitMilitant = 0b0000_1000,
 }
 
+pub fn add_selection_systems(app: &mut App) {
+    app
+        .add_systems(Update, handle_selection)
+        .add_systems(Update, handle_selection_collisions)
+        .add_systems(Update, render_selected_entity_ring)
+        .add_systems(Update, render_selection_aabb);
+}
+
 pub fn handle_selection_collisions(
-    mut q_selectable: Query<(Entity, &mut Transform, &Handle<StandardMaterial>), With<Selectable>>,
+    mut commands: Commands,
+    mut q_selectable: Query<Entity, With<Selectable>>,
     mut q_colliding_entities: Query<&CollidingEntities, (
         With<Collider>,
         With<Selection>
     )>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let Ok(colliding_entities) = q_colliding_entities.get_single_mut() else {
         return;
     };
     
+    for selectable_entity in q_selectable.iter() {
+        if colliding_entities.contains(&selectable_entity) {
+            continue;
+        };
+        commands.entity(selectable_entity).remove::<Selected>();
+    }
+    
     for colliding_entity in colliding_entities.iter() {
-        let Ok((_selected_entity, mut _selected_transform, selected_material)) = q_selectable.get_mut(*colliding_entity) else {
+        let Ok(selected_entity) = q_selectable.get_mut(*colliding_entity) else {
             continue;
         };
-        let Some(material) = materials.get_mut(selected_material.id()) else {
-            continue;
-        };
-        material.base_color = Color::WHITE;
+        commands.entity(selected_entity).insert(Selected);
     }
 }
 
@@ -55,7 +69,6 @@ pub fn handle_selection(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let (cursor, mut cursor_selection) = q_cursor.single_mut();
-
     // Handle selection
     match cursor.mode {
         CursorMode::Idle => {
@@ -140,6 +153,22 @@ pub fn render_selection_aabb(
             Transform::from_scale(Vector::from(aabb.size()).f32())
                 .with_translation(Vector::from(aabb.center()).f32()),
             Color::hsla(128., 100.0, 0.5, 0.75),
+        );
+    }
+}
+
+pub fn render_selected_entity_ring(
+    aabbs: Query<(
+        Entity,
+        &ColliderAabb
+    ), With<Selected>>,
+    mut gizmos: Gizmos<PhysicsGizmos>,
+) {
+    for (_entity, aabb) in &aabbs {
+        gizmos.cuboid(
+            Transform::from_scale(Vector::from(aabb.size()).f32())
+                .with_translation(Vector::from(aabb.center()).f32()),
+            Color::hsla(0., 100.0, 0.5, 0.75),
         );
     }
 }

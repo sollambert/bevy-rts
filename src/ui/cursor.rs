@@ -87,6 +87,14 @@ pub enum CursorMode {
     _Locked,
 }
 
+pub fn add_cursor_systems(app: &mut App) {
+    app
+        .add_systems(PostStartup, setup_cursor)
+        .add_systems(Update, handle_cursor)
+        .add_systems(Update, handle_cursor_mode_event)
+        .add_systems(Update, handle_input_press);
+}
+
 pub fn setup_cursor(
     mut commands: Commands,
     asset_server: Res<AssetServer>,

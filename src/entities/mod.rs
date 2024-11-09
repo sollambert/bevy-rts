@@ -4,7 +4,6 @@ use bevy_mod_picking::prelude::*;
 
 use crate::controls::selection::Selectable;
 
-pub mod player;
 pub mod world_objects;
 
 #[derive(Copy, Clone, PhysicsLayer)]
@@ -15,7 +14,7 @@ pub enum EntityCollisionLayers {
 }
 
 #[derive(Bundle)]
-pub struct SelectableActor {
+pub struct SelectableActorBundle {
     avian_pickable: AvianPickable,
     collider: Collider,
     collision_layers: CollisionLayers,
@@ -27,7 +26,7 @@ pub struct SelectableActor {
     transform: Transform,
 }
 
-impl Default for SelectableActor {
+impl Default for SelectableActorBundle {
     fn default() -> Self {
         Self {
             avian_pickable: AvianPickable,

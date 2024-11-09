@@ -5,7 +5,7 @@ use bevy::{input::mouse::{MouseMotion, MouseWheel}, prelude::*, time::Time};
 
 use crate::ui::cursor::*;
 
-use super::window::InputMap;
+use super::InputMap;
 
 const SCROLL_SENSITIVITY: f32 = 5.0;
 const TURN_SPEED: f32 = TAU / 4.;
@@ -24,6 +24,14 @@ pub struct PlayerCamera {
     pub rotation: Vec3,
     pub zoom: f32,
 }
+
+pub fn add_camera_systems(app: &mut App) {
+    app
+        .add_systems(Update, handle_camera_zoom)
+        .add_systems(Update, handle_camera_move)
+        .add_systems(Update, handle_camera_transform);
+}
+
 
 pub fn handle_camera_zoom(
     time: Res<Time>,

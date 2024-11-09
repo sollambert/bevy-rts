@@ -2,15 +2,15 @@ use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, La
 use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
 use bevy_contact_projective_decals::DecalPlugin;
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
-use controls::{camera::{handle_camera_move, handle_camera_transform, handle_camera_zoom, PlayerCamera}, selection::{handle_selection, handle_selection_collisions, render_selection_aabb, Selectable, SelectionMask}, window::{handle_debug_keys, handle_key_window_functions}};
+use controls::{camera::{add_camera_systems, PlayerCamera}, selection::{add_selection_systems, Selectable, SelectionMask}, window::handle_key_window_functions};
 use entities::EntityCollisionLayers;
-use ui::cursor::{handle_cursor, handle_cursor_mode_event, handle_input_press, setup_cursor, CursorModeChangeEvent};
-use utils::debug::{setup_debug_screen, update_debug_screen};
+use ui::cursor::{add_cursor_systems, CursorModeChangeEvent};
+use debug::debug::add_debug_systems;
 
 mod controls;
 mod entities;
 mod ui;
-mod utils;
+mod debug;
 
 fn main() {
     let plugins = (
@@ -30,32 +30,22 @@ fn main() {
     app.init_resource::<Game>()
         .add_event::<CursorModeChangeEvent>()
         .add_systems(Startup, setup)
-        .add_systems(PostStartup, setup_cursor)
-        .add_systems(Update, handle_cursor)
-        .add_systems(Update, handle_cursor_mode_event)
-        .add_systems(Update, handle_key_window_functions)
-        .add_systems(Update, handle_camera_move)
-        .add_systems(Update, handle_camera_zoom)
-        .add_systems(Update, handle_camera_transform)
-        .add_systems(Update, handle_input_press)
-        .add_systems(Update, handle_selection)
-        .add_systems(Update, handle_selection_collisions)
-        .add_systems(Update, render_selection_aabb);
+        .add_systems(Update, handle_key_window_functions);
     if cfg!(debug_assertions) {
         let debug_plugins = PhysicsDebugPlugin::default();
         app.add_plugins(debug_plugins)
-            .insert_resource(DebugPickingMode::Normal)
-            .add_systems(Startup, setup_debug_screen)
-            .add_systems(Update, handle_debug_keys)
-            .add_systems(Update, update_debug_screen);
+            .insert_resource(DebugPickingMode::Normal);
+        add_debug_systems(&mut app);
     } else {
-        app
-        .add_plugins(PhysicsDebugPlugin::default())
-        .insert_gizmo_config(
-            PhysicsGizmos::none(),
-            GizmoConfig::default(),
-        );
+        app.add_plugins(PhysicsDebugPlugin::default())
+            .insert_gizmo_config(
+                PhysicsGizmos::none(),
+                GizmoConfig::default(),
+            );
     }
+    add_camera_systems(&mut app);
+    add_cursor_systems(&mut app);
+    add_selection_systems(&mut app);
     app.run();
 }
 

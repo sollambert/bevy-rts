@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_mod_picking::prelude::Pickable;
 
-use crate::Game;
+use crate::{controls::InputMap, Game};
 
 #[derive(Component, Default)]
 pub struct DebugDisplay {
@@ -10,6 +10,14 @@ pub struct DebugDisplay {
 
 #[derive(Component)]
 pub struct KeyPressDebugDisplay;
+
+pub fn add_debug_systems(app: &mut App) {
+    app
+        .add_systems(Startup, setup_debug_screen)
+        .add_systems(Update, handle_debug_keys)
+        .add_systems(Update, update_debug_screen);
+}
+
 
 pub fn setup_debug_screen(
     mut commands: Commands,
@@ -40,6 +48,34 @@ pub fn setup_debug_screen(
     )).with_children(|parent| {
         parent.spawn(KeyPressDebugDisplay);
     });
+}
+
+pub fn handle_debug_keys(
+    mut commands: Commands,
+    key: Res<ButtonInput<KeyCode>>,
+    mut q_debug_menu: Query<(Entity, &mut DebugDisplay)>,
+) {
+    let input_map = InputMap::default();
+    let (debug_menu_entity, mut debug_display) = q_debug_menu.single_mut();
+
+    if key.just_pressed(input_map.debug_menu) {
+        let mut visibility: Visibility = Visibility::Visible;
+        let mut debug_menu_commands = commands.entity(debug_menu_entity);
+        if debug_display.visibility == Visibility::Visible {
+            visibility = Visibility::Hidden;
+        }
+        debug_display.visibility = visibility;
+        debug_menu_commands.insert(NodeBundle {
+            visibility,
+            style: Style {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            ..default()
+        });
+    }
 }
 
 pub fn update_debug_screen(
