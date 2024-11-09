@@ -1,8 +1,9 @@
-use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, RigidBody}, PhysicsPlugins};
+use avian3d::{prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, PhysicsGizmos, RigidBody}, PhysicsPlugins};
 use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
+use bevy_contact_projective_decals::DecalPlugin;
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
-use controls::{controls::{handle_debug_keys, handle_key_window_functions}, player::{handle_camera_move, handle_camera_transform, handle_camera_zoom}};
-use entities::{player::{PlayerBundle, PlayerCamera}, world_objects::{handle_selection, handle_world_object_drag, Selectable}, EntityCollisionLayers};
+use controls::{camera::{handle_camera_move, handle_camera_transform, handle_camera_zoom, PlayerCamera}, selection::{handle_selection, handle_selection_collisions, render_selection_aabb, Selectable, SelectionMask}, window::{handle_debug_keys, handle_key_window_functions}};
+use entities::EntityCollisionLayers;
 use ui::cursor::{handle_cursor, handle_cursor_mode_event, handle_input_press, setup_cursor, CursorModeChangeEvent};
 use utils::debug::{setup_debug_screen, update_debug_screen};
 
@@ -14,18 +15,20 @@ mod utils;
 fn main() {
     let plugins = (
         DefaultPlugins,
+        DecalPlugin,
         DefaultPickingPlugins.build()
             .disable::<RaycastBackend>()
             .enable::<AvianBackend>(),
         PhysicsPlugins::default()
     );
     let mut app = App::new();
-    app.add_plugins(plugins)
+    app
+        .add_plugins(plugins)
         .insert_resource(AvianBackendSettings {
             require_markers: true, // Optional: only needed when you want fine-grained control over which cameras and entities should be used with the Avian picking backend. This is disabled by default, and no marker components are required on cameras or colliders. This resource is inserted by default, you only need to add it if you want to override the default settings.
         });
     app.init_resource::<Game>()
-    .add_event::<CursorModeChangeEvent>()
+        .add_event::<CursorModeChangeEvent>()
         .add_systems(Startup, setup)
         .add_systems(PostStartup, setup_cursor)
         .add_systems(Update, handle_cursor)
@@ -35,8 +38,9 @@ fn main() {
         .add_systems(Update, handle_camera_zoom)
         .add_systems(Update, handle_camera_transform)
         .add_systems(Update, handle_input_press)
-        .add_systems(Update, handle_world_object_drag)
-        .add_systems(Update, handle_selection);
+        .add_systems(Update, handle_selection)
+        .add_systems(Update, handle_selection_collisions)
+        .add_systems(Update, render_selection_aabb);
     if cfg!(debug_assertions) {
         let debug_plugins = PhysicsDebugPlugin::default();
         app.add_plugins(debug_plugins)
@@ -44,6 +48,13 @@ fn main() {
             .add_systems(Startup, setup_debug_screen)
             .add_systems(Update, handle_debug_keys)
             .add_systems(Update, update_debug_screen);
+    } else {
+        app
+        .add_plugins(PhysicsDebugPlugin::default())
+        .insert_gizmo_config(
+            PhysicsGizmos::none(),
+            GizmoConfig::default(),
+        );
     }
     app.run();
 }
@@ -79,13 +90,11 @@ fn setup(
 
     commands.spawn((
         AvianPickable,
-        PlayerBundle {
-            player_camera: PlayerCamera {
-                zoom: 5.0,
-                ..default()
-            },
+        PlayerCamera {
+            zoom: 5.0,
             ..default()
-        }, Camera3dBundle::default()
+        },
+        Camera3dBundle::default()
     ));
     
     // Static physics object with a collision shape
@@ -142,7 +151,9 @@ fn setup(
             Collider::cuboid(1.0, 1.0, 1.0),
             CollisionLayers::new(EntityCollisionLayers::Selectable, LayerMask::ALL),
             AngularVelocity(Vec3::new(2.5, 3.5, 1.5)),
-            Selectable,
+            Selectable {
+                selection_mask: SelectionMask::UnitPassive
+            },
             PbrBundle {
                 mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
                 material: materials.add(Color::srgb_u8(124, 144, 255)),

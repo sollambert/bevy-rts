@@ -1,9 +1,9 @@
-use avian3d::{parry::shape::SharedShape, prelude::*};
+use avian3d::prelude::*;
 use core::f32;
 use bevy::{input::mouse::MouseMotion, prelude::*, render::camera::RenderTarget, window::*};
-use bevy_mod_picking::{backend::PointerHits, pointer::*, prelude::*, PointerBundle};
+use bevy_mod_picking::{pointer::*, prelude::*, PointerBundle};
 
-use crate::entities::{player::PlayerCamera, EntityCollisionLayers};
+use crate::controls::camera::PlayerCamera;
 
 pub const CURSOR_POSITION_DEFAULT: Vec2 = Vec2::new(0.5, 0.5);
 pub const MOUSE_SENSITIVITY: f32 = 0.2;
@@ -204,21 +204,16 @@ pub fn handle_cursor(
     mut q_windows: Query<(&mut Window, Entity)>,
     mut q_camera: Query<(&mut PlayerCamera, &mut Camera), Without<Cursor>>,
     mut q_pointer: Query<(&PointerId, &mut PointerLocation), With<Cursor>>,
-    mut q_selection: Query<(Entity, &mut Collider, Mut<Handle<Mesh>>, &mut Transform), With<Selection>>,
-    mut q_cursor: Query<(&mut Cursor, &mut CursorSelection, Entity)>,
+    mut q_cursor: Query<(&mut Cursor, Entity)>,
     mut q_cursor_texture_entity: Query<Entity, With<CursorTexture>>,
     mut ev_mouse: EventReader<MouseMotion>,
     mut ev_cursor_change: EventWriter<CursorModeChangeEvent>,
-    mut ev_pointer_hits: EventReader<PointerHits>,
-    q_map: Query<(Entity, &CollisionLayers)>,
     mouse: Res<ButtonInput<MouseButton>>,
     key: Res<ButtonInput<KeyCode>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let (mut window, window_entity) = q_windows.single_mut();
     let (_camera, _camera_3d) = q_camera.single_mut();
-    let (mut cursor, mut cursor_selection, _cursor_entity) = q_cursor.single_mut();
+    let (mut cursor, _cursor_entity) = q_cursor.single_mut();
     let cursor_texture_entity = q_cursor_texture_entity.single_mut();
     let delta = time.delta_seconds();
 
@@ -242,7 +237,7 @@ pub fn handle_cursor(
         window.cursor.grab_mode = CursorGrabMode::None;
     }
 
-    if cursor.mode == CursorMode::Idle || cursor.mode == CursorMode::Selecting { 
+    if window.focused && cursor.mode == CursorMode::Idle || cursor.mode == CursorMode::Selecting { 
         for mouse_event in ev_mouse.read() {
             let motion = mouse_event.delta * delta;
             cursor.location += motion * MOUSE_SENSITIVITY;
@@ -266,40 +261,11 @@ pub fn handle_cursor(
     // Handle state change
     match cursor.mode {
         CursorMode::Idle => {
+            if mouse.just_pressed(MouseButton::Left) {
+                ev_cursor_change.send(CursorModeChangeEvent(CursorMode::Selecting));
+            }
             if mouse.just_pressed(MouseButton::Right) {
                 ev_cursor_change.send(CursorModeChangeEvent(CursorMode::CameraControl));
-                return;
-            }
-            
-            if mouse.just_pressed(MouseButton::Left) {
-                for pointer_hits in ev_pointer_hits.read() {
-                    let picks = pointer_hits.picks.iter().next();
-                    if let Some((entity, hit_data)) = picks {
-                        let Ok((_map_entity, collision_layers)) = q_map.get(*entity) else {
-                            continue;
-                        };
-                        if mouse.just_pressed(MouseButton::Left)
-                            && collision_layers.memberships & EntityCollisionLayers::Ground == EntityCollisionLayers::Ground
-                        {
-                            ev_cursor_change.send(CursorModeChangeEvent(CursorMode::Selecting));
-                            cursor_selection.start_pos = hit_data.position;
-                            if let Some(position) = hit_data.position {
-                                println!("{}", position);
-                                commands.spawn((
-                                    SelectionBundle::default(),
-                                    CollisionLayers::from_bits(EntityCollisionLayers::Interaction.to_bits(), EntityCollisionLayers::Selectable.to_bits()),
-                                    PbrBundle {
-                                        material: materials.add(Color::linear_rgba(0.75, 0.75, 0.75, 0.5)),
-                                        mesh: meshes.add(Cuboid::new(1.0, 1000.0, 1.0)),
-                                        ..default()
-                                    },
-                                ));
-                                break;
-                            }
-                        }
-                    }
-                }
-                return;
             }
         },
         CursorMode::CameraControl => {
@@ -308,46 +274,10 @@ pub fn handle_cursor(
             }
         },
         CursorMode::Selecting => {
-            for pointer_hits in ev_pointer_hits.read() {
-                let picks = pointer_hits.picks.iter().next();
-                if let Some((entity, hit_data)) = picks {
-                    let Ok((_map_entity, collision_layers)) = q_map.get(*entity) else {
-                        continue;
-                    };
-                    let Ok((
-                        _selection_entity,
-                        mut selection_collider,
-                        selection_mesh,
-                        mut selection_transform
-                    )) = q_selection.get_single_mut() else {
-                        break;
-                    };
-                    if collision_layers.memberships & EntityCollisionLayers::Ground == EntityCollisionLayers::Ground
-                    {
-                        cursor_selection.end_pos = hit_data.position;
-                        let (Some(start_pos), Some(end_pos)) = (cursor_selection.start_pos, cursor_selection.end_pos) else {
-                            break;
-                        };
-                        println!("Start: {:.4}\nEnd:{:.4}", start_pos, end_pos);
-                        let pos_dif = Vec3::abs(start_pos - end_pos);
-                        let midpoint = start_pos.midpoint(end_pos);
-                        meshes.insert(selection_mesh.id(), Cuboid::new(pos_dif.x, 1000.0, pos_dif.z).into());
-                        selection_collider.set_shape(SharedShape::cuboid(pos_dif.x / 2., 500.0, pos_dif.z / 2.));
-                        *selection_transform = Transform {
-                            translation: midpoint,
-                            ..default()
-                        }
-                    }
-                }
-            }
             if mouse.just_released(MouseButton::Left) {
                 ev_cursor_change.send(CursorModeChangeEvent(CursorMode::Idle));
-                if let Ok(selection) = q_selection.get_single_mut() {
-                    commands.entity(selection.0).despawn();
-                }
-                return;
             }
-        }, 
+        },
         _ => {
             return;
         }

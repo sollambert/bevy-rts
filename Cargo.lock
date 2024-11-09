@@ -3,11 +3,12 @@
 version = 3
 
 [[package]]
-name = "MeltingPot"
+name = "RTS"
 version = "0.1.0"
 dependencies = [
  "avian3d",
  "bevy",
+ "bevy_contact_projective_decals",
  "bevy_mod_picking",
 ]
 
@@ -479,6 +480,14 @@ dependencies = [
  "serde",
  "thiserror",
  "wgpu-types",
+]
+
+[[package]]
+name = "bevy_contact_projective_decals"
+version = "0.1.0"
+source = "git+https://github.com/naasblod/bevy_contact_projective_decals.git?branch=main#8f738a011399c8acf8d0c508f9dc91a9c1e84dc3"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
