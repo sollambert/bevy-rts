@@ -6,7 +6,7 @@ use bevy_mod_picking::{pointer::*, prelude::*, PointerBundle};
 use crate::controls::camera::PlayerCamera;
 
 pub const CURSOR_POSITION_DEFAULT: Vec2 = Vec2::new(0.5, 0.5);
-pub const MOUSE_SENSITIVITY: f32 = 0.2;
+pub const MOUSE_SENSITIVITY: f32 = 10.;
 
 #[derive(Clone, Copy)]
 pub struct CursorTextureIndex;
@@ -234,8 +234,8 @@ pub fn handle_cursor(
         (cursor.visibility,
         Style {
             position_type: PositionType::Absolute,
-            left: Val::Px(window.width() * cursor.location.x),
-            top:  Val::Px(window.height() * cursor.location.y),
+            left: Val::Px(cursor.location.x),
+            top:  Val::Px(cursor.location.y),
             height: Val::Vw(2.5),
             width: Val::Vw(2.5),
             ..default()
@@ -254,7 +254,7 @@ pub fn handle_cursor(
         for mouse_event in ev_mouse.read() {
             let motion = mouse_event.delta * delta;
             cursor.location += motion * MOUSE_SENSITIVITY;
-            cursor.location = cursor.location.clamp(Vec2::ZERO, Vec2::ONE);
+            cursor.location = cursor.location.clamp(Vec2::ZERO, window.size());
         }
     }
 
@@ -262,8 +262,8 @@ pub fn handle_cursor(
         pointer_location.location = Some(Location {
             position:
                 Vec2::new( 
-                    cursor.location.x * window.width(),
-                    cursor.location.y * window.height()
+                    cursor.location.x,
+                    cursor.location.y
                 ),
             target: RenderTarget::Window(WindowRef::Primary)
                 .normalize(Some(window_entity))

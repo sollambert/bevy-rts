@@ -53,18 +53,22 @@ pub fn handle_selection_collisions(
     mut q_selectable: Query<Entity, (With<Selectable>, Without<Selected>)>,
     q_selected: Query<Entity, With<Selected>>,
     mut q_colliding_entities: Query<&CollidingEntities, With<Selection>>,
+    q_pointer_multiselect: Query<&PointerMultiselect>,
 ) {
     let Ok(colliding_entities) = q_colliding_entities.get_single_mut() else {
         return;
     };
-    
-    for selected_entity in q_selected.iter() {
-        if !colliding_entities.contains(&selected_entity) {
-            ev_selection.send(SelectionEvent {
-                entity: selected_entity,
-                clear: false,
-            });
-        };
+    let pointer_multiselect = q_pointer_multiselect.single();
+
+    if !pointer_multiselect.is_pressed {
+        for selected_entity in q_selected.iter() {
+            if !colliding_entities.contains(&selected_entity) {
+                ev_selection.send(SelectionEvent {
+                    entity: selected_entity,
+                    clear: false,
+                });
+            };
+        }
     }
     
     for colliding_entity in colliding_entities.iter() {
