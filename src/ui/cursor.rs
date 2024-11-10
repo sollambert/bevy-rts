@@ -55,8 +55,7 @@ pub struct CursorBundle {
 
 #[derive(Component, Default)]
 pub struct CursorSelection {
-    pub start_pos: Option<Vec3>,
-    pub end_pos: Option<Vec3>
+    pub start: Option<Vec2>,
 }
 
 #[derive(Component, Default)]
@@ -78,13 +77,19 @@ pub struct Cursor {
     pub mode: CursorMode,
 }
 
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum CursorMode {
     CameraControl,
     #[default]
     Idle,
     Selecting,
     _Locked,
+}
+
+impl std::fmt::Display for CursorMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 pub fn add_cursor_systems(app: &mut App) {

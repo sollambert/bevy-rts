@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 use bevy_mod_picking::prelude::Pickable;
 
-use crate::{controls::InputMap, Game};
+use crate::{controls::InputMap, ui::cursor::Cursor, Game};
 
 #[derive(Component, Default)]
 pub struct DebugDisplay {
     pub visibility: Visibility
 }
+
+#[derive(Component)]
+pub struct CursorModeDebugDisplay;
 
 #[derive(Component)]
 pub struct KeyPressDebugDisplay;
@@ -46,6 +49,7 @@ pub fn setup_debug_screen(
             ..default()
         }
     )).with_children(|parent| {
+        parent.spawn(CursorModeDebugDisplay);
         parent.spawn(KeyPressDebugDisplay);
     });
 }
@@ -80,14 +84,16 @@ pub fn handle_debug_keys(
 
 pub fn update_debug_screen(
     mut commands: Commands,
+    q_cursor: Query<&Cursor>,
     asset_server: Res<AssetServer>,
     key: Res<ButtonInput<KeyCode>>,
+    mut q_cursor_mode_debug_display: Query<Entity, With<CursorModeDebugDisplay>>,
     mut q_key_press_debug_display: Query<Entity, With<KeyPressDebugDisplay>>,
 ) {
     let text_style = TextStyle {
-        font: asset_server.load("fonts/Roboto/Roboto-Light.ttf"),
+        font: asset_server.load("fonts/Roboto/Roboto-Bold.ttf"),
         font_size: 16.0,
-        ..default()
+        color: Color::linear_rgba(0.33, 0.33, 0.33, 1.)
     };
     let key_press_debug_display = q_key_press_debug_display.single_mut();
 
@@ -101,6 +107,15 @@ pub fn update_debug_screen(
     // Create key display
     commands.entity(key_press_debug_display).insert(TextBundle::from_section(
         format!("Keys: {}", keys),
+        text_style.to_owned()
+    ));
+
+    let cursor_mode = q_cursor.single().mode;
+    let cursor_mode_debug_display = q_cursor_mode_debug_display.single_mut();
+
+    // Create cursor mode display
+    commands.entity(cursor_mode_debug_display).insert(TextBundle::from_section(
+        format!("Cursor Mode: {}", cursor_mode),
         text_style.to_owned()
     ));
 }
