@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 avian3d = "0.1.2"
-bevy = "0.14.2"
-bevy_contact_projective_decals = { git = "https://github.com/naasblod/bevy_contact_projective_decals.git", branch = "main" }
+bevy = { version = "0.14.2", features = ["jpeg", "pbr_transmission_textures"] }
+# bevy_contact_projective_decals = { git = "https://github.com/naasblod/bevy_contact_projective_decals.git", branch = "main" }
 bevy_mod_picking = { version = "0.20.1", features = ["avian3d", "backend_avian"] }
+image = "0.25.5"

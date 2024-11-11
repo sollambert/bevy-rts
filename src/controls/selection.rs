@@ -13,10 +13,13 @@ pub struct SelectionEvent {
     entity: Entity,
 }
 
+#[derive(Event)]
+pub struct SelectionStartEvent;
 
 #[derive(Component, Default)]
 pub struct Selected;
 
+#[allow(dead_code)]
 #[derive(Component, Default)]
 pub struct Selectable {
     pub selection_mask: SelectionMask
@@ -25,6 +28,7 @@ pub struct Selectable {
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 struct SelectionSet;
 
+#[allow(dead_code)]
 #[derive(Default)]
 pub enum SelectionMask {
     #[default]
@@ -38,8 +42,11 @@ pub enum SelectionMask {
 pub fn add_selection_systems(app: &mut App) {
     app
         .add_event::<SelectionEvent>()
+        .add_event::<SelectionStartEvent>()
+        .add_systems(Startup, setup_selection)
         .add_systems(Update, (
             handle_selection_event,
+            handle_selection_start_event,
             handle_selection,
             handle_selection_collisions
                 .after(handle_selection),
@@ -48,16 +55,35 @@ pub fn add_selection_systems(app: &mut App) {
         ).in_set(SelectionSet));
 }
 
+pub fn setup_selection(
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
+) {
+    materials.add(StandardMaterial {
+        alpha_mode: AlphaMode::Premultiplied,
+        base_color: Color::linear_rgba(0., 0., 0., 0.25),
+        cull_mode: None,
+        diffuse_transmission: 1.0,
+        double_sided: true,
+        ior: 1.0,
+        specular_transmission: 1.0,
+        unlit: true,
+        ..default()
+    });
+    meshes.add(Cuboid::new(0., 0., 0.));
+}
+
 pub fn handle_selection_collisions(
     mut ev_selection: EventWriter<SelectionEvent>,
     mut q_selectable: Query<Entity, (With<Selectable>, Without<Selected>)>,
     q_selected: Query<Entity, With<Selected>>,
-    mut q_colliding_entities: Query<&CollidingEntities, With<Selection>>,
+    q_colliding_entities: Query<&CollidingEntities, With<Selection>>,
     q_pointer_multiselect: Query<&PointerMultiselect>,
 ) {
-    let Ok(colliding_entities) = q_colliding_entities.get_single_mut() else {
+    let Some(colliding_entities) = q_colliding_entities.iter().next() else {
         return;
     };
+
     let pointer_multiselect = q_pointer_multiselect.single();
 
     if !pointer_multiselect.is_pressed {
@@ -87,16 +113,15 @@ pub fn handle_selection_collisions(
 pub fn handle_selection(
     mut commands: Commands,
     mut q_selection: Query<(Entity, &mut Collider, Mut<Handle<Mesh>>, &mut Transform), With<Selection>>,
-    mut q_cursor: Query<(&mut PointerMultiselect, &mut Cursor, &mut CursorSelection)>,
+    mut q_cursor: Query<(&mut Cursor, &mut CursorSelection)>,
     q_camera: Query<&PlayerCamera>,
     mut ev_pointer_hits: EventReader<PointerHits>,
-    mut ev_selection: EventWriter<SelectionEvent>,
     q_collision_layers: Query<&CollisionLayers>,
     mouse: Res<ButtonInput<MouseButton>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut ev_selection_start: EventWriter<SelectionStartEvent>,
 ) {
-    let (pointer_multiselect, cursor, mut cursor_selection) = q_cursor.single_mut();
+    let (cursor, mut cursor_selection) = q_cursor.single_mut();
     // Handle selection
     match cursor.mode {
         CursorMode::Idle => {
@@ -106,47 +131,8 @@ pub fn handle_selection(
                     commands.entity(selection.0).despawn();
                 }
             }
-            if !mouse.just_pressed(MouseButton::Left) {
-                return;
-            }
-            for pointer_hits in ev_pointer_hits.read() {
-                let Some((entity, hit_data)) = pointer_hits.picks.iter().next() else { continue; };
-                let Ok(collision_layers) = q_collision_layers.get(*entity) else { continue; };
-                if collision_layers.memberships & EntityCollisionLayers::Ground == EntityCollisionLayers::Ground {
-                    let Some(position) = hit_data.position else {
-                        continue;
-                    };
-                    cursor_selection.start = Some(position.xz());
-                    commands.spawn((
-                        Pickable {
-                            should_block_lower: false,
-                            is_hoverable: false,
-                        },
-                        SelectionBundle::default(),
-                        CollisionLayers::from_bits(EntityCollisionLayers::Interaction.to_bits(), EntityCollisionLayers::Selectable.to_bits()),
-                        PbrBundle {
-                            material: materials.add(StandardMaterial {
-                                alpha_mode: AlphaMode::Premultiplied,
-                                base_color: Color::linear_rgba(0., 0., 0., 0.25),
-                                cull_mode: None,
-                                diffuse_transmission: 1.0,
-                                double_sided: true,
-                                ior: 1.0,
-                                specular_transmission: 1.0,
-                                unlit: true,
-                                ..default()
-                            }),
-                            mesh: meshes.add(Cuboid::new(0., 0., 0.)),
-                            ..default()
-                        },
-                    ));
-                    break;
-                } else if collision_layers.memberships & EntityCollisionLayers::Selectable == EntityCollisionLayers::Selectable {
-                    ev_selection.send(SelectionEvent {
-                        entity: *entity,
-                        clear: !pointer_multiselect.is_pressed
-                    });
-                }
+            if mouse.just_pressed(MouseButton::Left) {
+                ev_selection_start.send(SelectionStartEvent);
             }
         },
         CursorMode::Selecting => {
@@ -203,6 +189,60 @@ pub fn handle_selection_event(
             deselect_entity(&mut commands, event.entity);
         } else {
             select_entity(&mut commands, event.entity);
+        }
+    }
+}
+
+pub fn handle_selection_start_event(
+    mut commands: Commands,
+    mut q_cursor: Query<(&mut PointerMultiselect, &mut CursorSelection)>,
+    mut ev_pointer_hits: EventReader<PointerHits>,
+    q_collision_layers: Query<&CollisionLayers>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut ev_selection: EventWriter<SelectionEvent>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut ev_selection_start: EventReader<SelectionStartEvent>,
+) {
+    let Some(_) = ev_selection_start.read().next() else { return; };
+    let (pointer_multiselect, mut cursor_selection) = q_cursor.single_mut();
+
+    for pointer_hits in ev_pointer_hits.read() {
+        let Some((entity, hit_data)) = pointer_hits.picks.iter().next() else { continue; };
+        let Ok(collision_layers) = q_collision_layers.get(*entity) else { continue; };
+        if collision_layers.memberships & EntityCollisionLayers::Ground == EntityCollisionLayers::Ground {
+            let Some(position) = hit_data.position else {
+                continue;
+            };
+            cursor_selection.start = Some(position.xz());
+            commands.spawn((
+                Pickable {
+                    should_block_lower: false,
+                    is_hoverable: false,
+                },
+                SelectionBundle::default(),
+                CollisionLayers::from_bits(EntityCollisionLayers::Interaction.to_bits(), EntityCollisionLayers::Selectable.to_bits()),
+                PbrBundle {
+                    material: materials.add(StandardMaterial {
+                        alpha_mode: AlphaMode::Premultiplied,
+                        base_color: Color::linear_rgba(0., 0., 0., 0.25),
+                        cull_mode: None,
+                        diffuse_transmission: 1.0,
+                        double_sided: true,
+                        ior: 1.0,
+                        specular_transmission: 1.0,
+                        unlit: true,
+                        ..default()
+                    }),
+                    mesh: meshes.add(Cuboid::new(0., 0., 0.)),
+                    ..default()
+                },
+            ));
+            break;
+        } else if collision_layers.memberships & EntityCollisionLayers::Selectable == EntityCollisionLayers::Selectable {
+            ev_selection.send(SelectionEvent {
+                entity: *entity,
+                clear: !pointer_multiselect.is_pressed
+            });
         }
     }
 }
