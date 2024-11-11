@@ -1,5 +1,5 @@
 use avian3d::{math::*, prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, PhysicsGizmos, RigidBody}, PhysicsPlugins};
-use bevy::{prelude::*, render::mesh::ConeMeshBuilder};
+use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::mesh::ConeMeshBuilder};
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{camera::{add_camera_systems, PlayerCamera}, selection::{add_selection_systems, Selectable, SelectionMask}, window::handle_key_window_functions};
 use entities::EntityCollisionLayers;
@@ -200,17 +200,27 @@ fn setup(
         ..default()
     });
 
-    // commands.spawn(DirectionalLightBundle {
-    //     directional_light: DirectionalLight {
-    //         color: Color::hsl(42.0, 100., 77.),
-    //         shadows_enabled: true,
-    //         illuminance: 0.0001,
-    //         ..default()
-    //     },
-    //     transform: Transform {
-    //         rotation: Quat::from_euler(EulerRot::YXZ, 0.0, -PI / 1.8, 0.0),
-    //         ..default()
-    //     },
-    //     ..default()
-    // });
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            color: Color::linear_rgb(255. / 255., 209. / 255., 178. / 255.),
+            illuminance: light_consts::lux::CIVIL_TWILIGHT,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform {
+            translation: Vec3::new(0.0, 2.0, 0.0),
+            rotation: Quat::from_rotation_x(-PI / 4.),
+            ..default()
+        },
+        // The default cascade config is designed to handle large scenes.
+        // As this example has a much smaller world, we can tighten the shadow
+        // bounds for better visual quality.
+        cascade_shadow_config: CascadeShadowConfigBuilder {
+            first_cascade_far_bound: 4.0,
+            maximum_distance: 10.0,
+            ..default()
+        }
+        .into(),
+        ..default()
+    });
 }

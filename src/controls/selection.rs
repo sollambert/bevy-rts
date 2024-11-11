@@ -1,6 +1,6 @@
 use avian3d::{math::*, parry::shape::SharedShape, prelude::*};
 use backend::PointerHits;
-use bevy::prelude::*;
+use bevy::{pbr::{NotShadowCaster, NotShadowReceiver}, prelude::*};
 use bevy_mod_picking::prelude::*;
 
 use crate::{entities::EntityCollisionLayers, ui::cursor::*};
@@ -61,12 +61,9 @@ pub fn setup_selection(
 ) {
     materials.add(StandardMaterial {
         alpha_mode: AlphaMode::Premultiplied,
-        base_color: Color::linear_rgba(0., 0., 0., 0.25),
+        base_color: Color::linear_rgba(0., 0., 0., 0.5),
         cull_mode: None,
-        diffuse_transmission: 1.0,
         double_sided: true,
-        ior: 1.0,
-        specular_transmission: 1.0,
         unlit: true,
         ..default()
     });
@@ -140,30 +137,30 @@ pub fn handle_selection(
             for pointer_hits in ev_pointer_hits.read() {
                 let Some((entity, hit_data)) = pointer_hits.picks.iter().next() else { continue; };
                 let Ok(collision_layers) = q_collision_layers.get(*entity) else { continue; };
-                let Ok((
-                    _selection_entity,
-                    mut selection_collider,
-                    selection_mesh,
-                    mut selection_transform
-                )) = q_selection.get_single_mut() else {
-                    break;
-                };
-                if collision_layers.memberships & EntityCollisionLayers::Ground == EntityCollisionLayers::Ground {
-                    let (Some(start), Some(position) )= (cursor_selection.start, hit_data.position) else {
-                        return;
-                    };
-                    let (start, end) = (start, position.xz());
-                    let rotation = Quat::from_rotation_y(camera.rotation.y);
-                    let midpoint = start.midpoint(end);
-                    let rot_matrix = Mat2::from_angle(camera.rotation.y);
-                    let (rot_start, rot_end) = (rot_matrix.mul_vec2(start), rot_matrix.mul_vec2(end));
-                    let pos_dif = Vec2::abs(rot_start - rot_end);
-                    meshes.insert(selection_mesh.id(), Cuboid::new(pos_dif.x, 1000.0, pos_dif.y).into());
-                    selection_collider.set_shape(SharedShape::cuboid(pos_dif.x / 2., 500.0, pos_dif.y / 2.));
-                    *selection_transform = Transform {
-                        translation: Vec3::new(midpoint.x, 0.0, midpoint.y),
-                        rotation,
-                        ..default()
+                for selection in q_selection.iter_mut() {
+                    let (
+                        _selection_entity,
+                        mut selection_collider,
+                        selection_mesh,
+                        mut selection_transform
+                    ) = selection;
+                    if collision_layers.memberships & EntityCollisionLayers::Ground == EntityCollisionLayers::Ground {
+                        let (Some(start), Some(position) )= (cursor_selection.start, hit_data.position) else {
+                            return;
+                        };
+                        let (start, end) = (start, position.xz());
+                        let rotation = Quat::from_rotation_y(camera.rotation.y);
+                        let midpoint = start.midpoint(end);
+                        let rot_matrix = Mat2::from_angle(camera.rotation.y);
+                        let (rot_start, rot_end) = (rot_matrix.mul_vec2(start), rot_matrix.mul_vec2(end));
+                        let pos_dif = Vec2::abs(rot_start - rot_end);
+                        meshes.insert(selection_mesh.id(), Cuboid::new(pos_dif.x, 1000.0, pos_dif.y).into());
+                        selection_collider.set_shape(SharedShape::cuboid(pos_dif.x / 2., 500.0, pos_dif.y / 2.));
+                        *selection_transform = Transform {
+                            translation: Vec3::new(midpoint.x, 0.0, midpoint.y),
+                            rotation,
+                            ..default()
+                        }
                     }
                 }
             }
@@ -224,18 +221,20 @@ pub fn handle_selection_start_event(
                 PbrBundle {
                     material: materials.add(StandardMaterial {
                         alpha_mode: AlphaMode::Premultiplied,
-                        base_color: Color::linear_rgba(0., 0., 0., 0.25),
+                        base_color: Color::linear_rgba(0., 0., 0., 0.5),
                         cull_mode: None,
-                        diffuse_transmission: 1.0,
+                        diffuse_transmission: 0.5,
                         double_sided: true,
                         ior: 1.0,
-                        specular_transmission: 1.0,
+                        specular_transmission: 0.5,
                         unlit: true,
                         ..default()
                     }),
                     mesh: meshes.add(Cuboid::new(0., 0., 0.)),
                     ..default()
                 },
+                NotShadowCaster,
+                NotShadowReceiver,        
             ));
             break;
         } else if collision_layers.memberships & EntityCollisionLayers::Selectable == EntityCollisionLayers::Selectable {
