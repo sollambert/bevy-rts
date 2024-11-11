@@ -3,7 +3,7 @@ use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::mesh::ConeMeshBu
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{camera::{add_camera_systems, PlayerCamera}, selection::{add_selection_systems, Selectable, SelectionMask}, window::handle_key_window_functions};
 use entities::EntityCollisionLayers;
-use resources::materials::tile::TILES_074;
+use resources::{initialize_resources, materials::tile::TILES_074};
 use ui::cursor::{add_cursor_systems, CursorModeChangeEvent};
 use debug::debug::add_debug_systems;
 
@@ -45,6 +45,7 @@ fn main() {
                 GizmoConfig::default(),
             );
     }
+    initialize_resources(&mut app);
     add_camera_systems(&mut app);
     add_cursor_systems(&mut app);
     add_selection_systems(&mut app);
@@ -172,7 +173,7 @@ fn setup(
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             color: Color::linear_rgb(255. / 255., 209. / 255., 178. / 255.),
-            illuminance: light_consts::lux::CIVIL_TWILIGHT,
+            illuminance: light_consts::lux::CLEAR_SUNRISE,
             shadows_enabled: true,
             ..default()
         },

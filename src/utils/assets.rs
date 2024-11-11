@@ -106,9 +106,6 @@ impl<'a> AmbientCGMaterial<'a> {
         let normal_map_path = material_path.join(constructed_material_name.clone() + "_NormalGL").with_extension("jpg");
         let roughness_texture_path = material_path.join(constructed_material_name.clone() + "_Roughness").with_extension("jpg");
 
-        println!("{:?}", occlusion_path);
-        println!("{:?}", &absolute_resource_path(&occlusion_path));
-
         let repeat_texture = 
         |s: &mut _| {
             *s = ImageLoaderSettings {

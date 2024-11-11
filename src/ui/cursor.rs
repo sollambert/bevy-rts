@@ -11,30 +11,31 @@ pub const MOUSE_SENSITIVITY: f32 = 10.;
 #[derive(Clone, Copy)]
 pub struct CursorTextureIndex;
 
+#[allow(unused)]
 impl CursorTextureIndex {
     pub const POINTER: usize = 0;
-    pub const _POINTER_QUESTION: usize = 1;
-    pub const _POINTER_EXCLAMATION: usize = 2;
-    pub const _POINTER_CIRCLE: usize = 3;
+    pub const POINTER_QUESTION: usize = 1;
+    pub const POINTER_EXCLAMATION: usize = 2;
+    pub const POINTER_CIRCLE: usize = 3;
     pub const POINTER_X: usize = 4;
-    pub const _POINTER_CLOCK: usize = 5;
-    pub const _POINTER_BLOCK: usize = 6;
-    pub const _POINTER_FACE: usize = 7;
-    pub const _RESIZE_TL_BR: usize = 8;
-    pub const _RESIZE_TR_BL: usize = 9;
-    pub const _RESIZE_TB: usize = 10;
-    pub const _RESIZE_RL: usize = 11;
-    pub const _RESIZE_CROSS: usize = 12;
-    pub const _INSERT: usize = 13;
-    pub const _CROSSHAIR_1: usize = 16;
-    pub const _CROSSHAIR_2: usize = 17;
-    pub const _CROSSHAIR_3: usize = 18;
-    pub const _CROSSHAIR_4: usize = 19;
+    pub const POINTER_CLOCK: usize = 5;
+    pub const POINTER_BLOCK: usize = 6;
+    pub const POINTER_FACE: usize = 7;
+    pub const RESIZE_TL_BR: usize = 8;
+    pub const RESIZE_TR_BL: usize = 9;
+    pub const RESIZE_TB: usize = 10;
+    pub const RESIZE_RL: usize = 11;
+    pub const RESIZE_CROSS: usize = 12;
+    pub const INSERT: usize = 13;
+    pub const CROSSHAIR_1: usize = 16;
+    pub const CROSSHAIR_2: usize = 17;
+    pub const CROSSHAIR_3: usize = 18;
+    pub const CROSSHAIR_4: usize = 19;
     pub const CROSSHAIR_5: usize = 20;
-    pub const _CROSSHAIR_6: usize = 24;
-    pub const _CROSSHAIR_7: usize = 25;
-    pub const _CROSSHAIR_8: usize = 26;
-    pub const _CROSSHAIR_9: usize = 27;
+    pub const CROSSHAIR_6: usize = 24;
+    pub const CROSSHAIR_7: usize = 25;
+    pub const CROSSHAIR_8: usize = 26;
+    pub const CROSSHAIR_9: usize = 27;
     pub const CROSSHAIR_10: usize = 28;
 }
 

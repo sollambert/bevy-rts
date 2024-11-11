@@ -43,7 +43,6 @@ pub fn add_selection_systems(app: &mut App) {
     app
         .add_event::<SelectionEvent>()
         .add_event::<SelectionStartEvent>()
-        .add_systems(Startup, setup_selection)
         .add_systems(Update, (
             handle_selection_event,
             handle_selection_start_event,
@@ -53,21 +52,6 @@ pub fn add_selection_systems(app: &mut App) {
             render_selected_entity_aabb,
             render_selection_collider,
         ).in_set(SelectionSet));
-}
-
-pub fn setup_selection(
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>
-) {
-    materials.add(StandardMaterial {
-        alpha_mode: AlphaMode::Premultiplied,
-        base_color: Color::linear_rgba(0., 0., 0., 0.5),
-        cull_mode: None,
-        double_sided: true,
-        unlit: true,
-        ..default()
-    });
-    meshes.add(Cuboid::new(0., 0., 0.));
 }
 
 pub fn handle_selection_collisions(
@@ -122,14 +106,15 @@ pub fn handle_selection(
     // Handle selection
     match cursor.mode {
         CursorMode::Idle => {
+            if mouse.just_pressed(MouseButton::Left) {
+                println!("Sending selection event");
+                ev_selection_start.send(SelectionStartEvent);
+            }
             if !mouse.pressed(MouseButton::Left) {
                 cursor_selection.start = None;
                 if let Ok(selection) = q_selection.get_single_mut() {
                     commands.entity(selection.0).despawn();
                 }
-            }
-            if mouse.just_pressed(MouseButton::Left) {
-                ev_selection_start.send(SelectionStartEvent);
             }
         },
         CursorMode::Selecting => {
@@ -201,6 +186,7 @@ pub fn handle_selection_start_event(
     mut ev_selection_start: EventReader<SelectionStartEvent>,
 ) {
     let Some(_) = ev_selection_start.read().next() else { return; };
+    println!("Started selection");
     let (pointer_multiselect, mut cursor_selection) = q_cursor.single_mut();
 
     for pointer_hits in ev_pointer_hits.read() {
