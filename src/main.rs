@@ -3,13 +3,14 @@ use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::mesh::ConeMeshBu
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{camera::{add_camera_systems, PlayerCamera}, selection::{add_selection_systems, Selectable, SelectionMask}, window::handle_key_window_functions};
 use entities::EntityCollisionLayers;
+use resources::materials::tile::TILES_074;
 use ui::cursor::{add_cursor_systems, CursorModeChangeEvent};
 use debug::debug::add_debug_systems;
-use utils::assets::{AmbientCGMaterial, AmbientCGResolution};
 
 mod controls;
 mod debug;
 mod entities;
+mod resources;
 mod ui;
 mod utils;
 
@@ -87,38 +88,6 @@ fn setup(
         },
         Camera3dBundle::default()
     ));
-
-    #[allow(unused_variables)]
-    let ground_054 = AmbientCGMaterial {
-        name: "Ground054",
-        subfolder: Some("ground"),
-        resolution: AmbientCGResolution::OneK,
-        uv_scale: Some(Vec2::new(8., 8.))
-    };
-
-    #[allow(unused_variables)]
-    let metal_055_a = AmbientCGMaterial {
-        name: "Metal055A",
-        resolution: AmbientCGResolution::OneK,
-        subfolder: Some("metal"),
-        uv_scale: Some(Vec2::new(4., 4.))
-    };
-
-    #[allow(unused_variables)]
-    let tiles_107 = AmbientCGMaterial {
-        name: "Tiles107",
-        resolution: AmbientCGResolution::OneK,
-        subfolder: Some("tiles"),
-        uv_scale: Some(Vec2::new(24., 24.))
-    };
-
-    #[allow(unused_variables)]
-    let marble_006 = AmbientCGMaterial {
-        name: "Marble006",
-        resolution: AmbientCGResolution::OneK,
-        subfolder: Some("marble"),
-        uv_scale: Some(Vec2::new(4., 4.))
-    };
     
     // Static physics object with a collision shape
     commands.spawn((
@@ -133,7 +102,7 @@ fn setup(
         Friction::new(0.5),
         PbrBundle {
             mesh: meshes.add(Cylinder::new(200.0, 0.1)),
-            material: marble_006.load(asset_server, &mut materials),
+            material: TILES_074.load(asset_server, &mut materials),
             transform: Transform::from_xyz(0.0, -0.05, 0.0),
             ..default()
         },
