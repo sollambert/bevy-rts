@@ -1,7 +1,7 @@
 #![allow(unused)]
 use bevy::math::Vec2;
 
-use crate::plugins::assets::*;
+use crate::plugins::ambient_cg::*;
 
 pub const MARBLE_006: AmbientCGMaterial = AmbientCGMaterial {
     name: "Marble006",

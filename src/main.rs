@@ -3,7 +3,7 @@ use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::mesh::ConeMeshBu
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{camera::{add_camera_systems, PlayerCamera}, selection::{add_selection_systems, Selectable, SelectionMask}, window::handle_key_window_functions};
 use entities::EntityCollisionLayers;
-use plugins::assets::{AmbientCGPath, AmbientCGPlugin};
+use plugins::ambient_cg::{AmbientCGPath, AmbientCGPlugin};
 use resources::{initialize_resources, materials::tile::TILES_074};
 use ui::cursor::{add_cursor_systems, CursorModeChangeEvent};
 use debug::debug::add_debug_systems;
