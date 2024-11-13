@@ -1,7 +1,6 @@
 #![allow(unused)]
 use bevy::math::Vec2;
-
-use crate::plugins::ambient_cg::*;
+use bevy_ambient_cg::ambient_cg::{AmbientCGMaterial, AmbientCGResolution};
 
 pub const TILES_074: AmbientCGMaterial = AmbientCGMaterial {
     name: "Tiles074",

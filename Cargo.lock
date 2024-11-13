@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "avian3d",
  "bevy",
+ "bevy_ambient_cg",
  "bevy_mod_picking",
  "image",
 ]
@@ -406,6 +407,15 @@ dependencies = [
  "bevy_app",
  "bevy_derive",
  "bevy_ecs",
+]
+
+[[package]]
+name = "bevy_ambient_cg"
+version = "0.1.0"
+source = "git+https://github.com/sollambert/bevy_ambient_cg.git?branch=main#55d1858adc1072b76c5b51d0a503d2931216465c"
+dependencies = [
+ "bevy",
+ "image",
 ]
 
 [[package]]

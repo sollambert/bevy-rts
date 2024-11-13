@@ -1,9 +1,9 @@
 use avian3d::{math::*, prelude::{AngularVelocity, Collider, CollisionLayers, Friction, LayerMask, PhysicsDebugPlugin, PhysicsGizmos, RigidBody}, PhysicsPlugins};
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::mesh::ConeMeshBuilder};
+use bevy_ambient_cg::ambient_cg::{AmbientCGPath, AmbientCGPlugin};
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{camera::{add_camera_systems, PlayerCamera}, selection::{add_selection_systems, Selectable, SelectionMask}, window::handle_key_window_functions};
 use entities::EntityCollisionLayers;
-use plugins::ambient_cg::{AmbientCGPath, AmbientCGPlugin};
 use resources::{initialize_resources, materials::tile::TILES_074};
 use ui::cursor::{add_cursor_systems, CursorModeChangeEvent};
 use debug::debug::add_debug_systems;
@@ -13,7 +13,6 @@ mod debug;
 mod entities;
 mod resources;
 mod ui;
-mod plugins;
 
 fn main() {
     let plugins = (
