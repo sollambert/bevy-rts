@@ -1,9 +1,11 @@
-use bevy::prelude::KeyCode;
+use bevy::prelude::{KeyCode, Resource};
 
 pub mod camera;
 pub mod selection;
 pub mod window;
 
+
+#[derive(Resource)]
 pub struct InputMap {
     pub forward: KeyCode,
     pub backward: KeyCode,

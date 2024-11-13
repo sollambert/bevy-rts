@@ -3,6 +3,7 @@ use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::mesh::ConeMeshBu
 use bevy_mod_picking::{debug::DebugPickingMode, prelude::{AvianBackend, AvianBackendSettings, AvianPickable, Pickable, RaycastBackend}, DefaultPickingPlugins, PickableBundle};
 use controls::{camera::{add_camera_systems, PlayerCamera}, selection::{add_selection_systems, Selectable, SelectionMask}, window::handle_key_window_functions};
 use entities::EntityCollisionLayers;
+use plugins::assets::{AmbientCGPath, AmbientCGPlugin};
 use resources::{initialize_resources, materials::tile::TILES_074};
 use ui::cursor::{add_cursor_systems, CursorModeChangeEvent};
 use debug::debug::add_debug_systems;
@@ -12,10 +13,11 @@ mod debug;
 mod entities;
 mod resources;
 mod ui;
-mod utils;
+mod plugins;
 
 fn main() {
     let plugins = (
+        AmbientCGPlugin::default(),
         DefaultPlugins,
         DefaultPickingPlugins.build()
             .disable::<RaycastBackend>()
@@ -71,6 +73,7 @@ impl Default for Game {
 
 fn setup(
     mut commands: Commands,
+    acg_path: Res<AmbientCGPath>,
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -103,7 +106,7 @@ fn setup(
         Friction::new(0.5),
         PbrBundle {
             mesh: meshes.add(Cylinder::new(200.0, 0.1)),
-            material: TILES_074.load(asset_server, &mut materials),
+            material: TILES_074.load(acg_path.clone(), asset_server, &mut materials),
             transform: Transform::from_xyz(0.0, -0.05, 0.0),
             ..default()
         },

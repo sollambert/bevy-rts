@@ -11,6 +11,28 @@ use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::texture::*;
 use image::{DynamicImage, GenericImageView, ImageReader, RgbImage};
 
+pub struct AmbientCGPlugin {
+    base_path: String
+}
+
+impl Default for AmbientCGPlugin {
+    fn default() -> Self {
+        Self {
+            base_path: "materials".to_string(),
+        }
+    }
+}
+
+impl Plugin for AmbientCGPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .insert_resource::<AmbientCGPath>(AmbientCGPath(self.base_path.clone()));
+    }
+}
+
+#[derive(Clone, Resource)]
+pub struct AmbientCGPath(String);
+
 #[allow(dead_code)]
 #[derive(Default)]
 pub enum AmbientCGResolution {
@@ -87,10 +109,11 @@ pub struct AmbientCGMaterial<'a> {
 impl<'a> AmbientCGMaterial<'a> {
     pub fn load(
         &self,
+        base_path: AmbientCGPath,
         asset_server: Res<'_, AssetServer>,
         materials: &mut ResMut<'_, Assets<StandardMaterial>>
     ) -> Handle<StandardMaterial> {
-        let mut material_path = PathBuf::from_str("materials").unwrap();
+        let mut material_path = PathBuf::from_str(&base_path.0).unwrap();
 
         if let Some(subfolder) = &self.subfolder {
             material_path.push(subfolder);
@@ -144,12 +167,6 @@ impl<'a> AmbientCGMaterial<'a> {
             metallic_roughness_texture = Some(asset_server.load_with_settings(roughness_texture_path, repeat_texture));
         }
 
-        println!("{:?}", occlusion_texture);
-        println!("{:?}", base_color_texture);
-        println!("{:?}", thickness_texture);
-        println!("{:?}", normal_map_texture);
-        println!("{:?}", metallic_roughness_texture);
-
         let material = StandardMaterial {
             base_color_texture,
             metallic_roughness_texture,
@@ -180,7 +197,6 @@ fn absolute_resource_path(p: &PathBuf) -> PathBuf {
 }
 
 fn create_roughness_metallic_image(roughness_path: PathBuf, metallic_path: PathBuf) -> Image {
-    println!("roughness: {:?}\nmetallic: {:?}", roughness_path, metallic_path);
     let roughness = load_grayscale_image(&roughness_path);
     let metallic = load_grayscale_image(&metallic_path);
 

@@ -1,7 +1,7 @@
 #![allow(unused)]
 use bevy::math::Vec2;
 
-use crate::utils::assets::*;
+use crate::plugins::assets::*;
 
 pub const TILES_074: AmbientCGMaterial = AmbientCGMaterial {
     name: "Tiles074",

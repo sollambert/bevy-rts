@@ -16,6 +16,9 @@ pub struct SelectionEvent {
 #[derive(Event)]
 pub struct SelectionStartEvent;
 
+#[derive(Event)]
+pub struct SelectionEndEvent;
+
 #[derive(Component, Default)]
 pub struct Selected;
 
